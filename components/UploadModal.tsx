@@ -19,6 +19,7 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
   const [analyzed, setAnalyzed] = useState<AnalyzeResult | null>(null);
   const [form, setForm] = useState({ subject: '', due_date: '', description: '' });
   const [error, setError] = useState<string | null>(null);
+  const [imageFullscreen, setImageFullscreen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const supabase = createClient();
@@ -107,6 +108,16 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
 
   return (
     <div className="fixed inset-0 z-50 flex flex-col bg-black/60 backdrop-blur-sm">
+      {/* 이미지 전체화면 뷰어 */}
+      {imageFullscreen && imagePreview && (
+        <div
+          className="fixed inset-0 z-[100] bg-black flex items-center justify-center"
+          onClick={() => setImageFullscreen(false)}
+        >
+          <img src={imagePreview} alt="전체화면" className="max-w-full max-h-full object-contain" />
+          <button className="absolute top-5 right-5 text-white text-3xl font-bold">✕</button>
+        </div>
+      )}
       <div className="flex-1 flex items-end">
         <div className="w-full bg-white rounded-t-3xl max-h-[92vh] overflow-y-auto">
           {/* 헤더 */}
@@ -193,11 +204,20 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
             {step === 'review' && (
               <div className="space-y-4">
                 {imagePreview && (
-                  <img
-                    src={imagePreview}
-                    alt="업로드 이미지"
-                    className="w-full h-44 object-cover rounded-2xl"
-                  />
+                  <div className="relative">
+                    <img
+                      src={imagePreview}
+                      alt="업로드 이미지"
+                      className="w-full h-44 object-cover rounded-2xl cursor-zoom-in"
+                      onClick={() => setImageFullscreen(true)}
+                    />
+                    <button
+                      onClick={() => setImageFullscreen(true)}
+                      className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded-lg"
+                    >
+                      🔍 확대해서 날짜 확인
+                    </button>
+                  </div>
                 )}
 
                 {error && (
@@ -209,7 +229,7 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
                 {analyzed && (
                   <div className="bg-blue-50 border border-blue-200 rounded-xl px-4 py-3 text-sm text-blue-700 flex items-center gap-2">
                     <span>✨</span>
-                    <span>AI가 내용을 분석했어요. 확인 후 수정하세요.</span>
+                    <span>AI가 내용을 분석했어요. 사진 확대 후 날짜를 꼭 확인하세요!</span>
                   </div>
                 )}
 
@@ -227,10 +247,10 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
                     />
                   </div>
 
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-1 block">
-                      마감일 <span className="text-red-500">*</span>
-                      <span className="text-xs text-gray-400 font-normal ml-1">(AI가 틀리면 직접 수정하세요)</span>
+                  <div className="bg-orange-50 border border-orange-200 rounded-2xl p-3">
+                    <label className="text-sm font-bold text-orange-700 mb-2 block">
+                      📅 마감일 <span className="text-red-500">*</span>
+                      <span className="text-xs font-normal ml-1">— 위 사진 확대해서 날짜 확인 후 수정하세요</span>
                     </label>
                     <div className="flex gap-2">
                       <div className="flex-1 relative">
@@ -282,8 +302,8 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
                       </div>
                     </div>
                     {form.due_date && (
-                      <p className="text-xs text-gray-400 mt-1 text-right">
-                        📅 {new Date(form.due_date + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      <p className="text-xs text-orange-600 font-medium mt-2 text-center">
+                        → {new Date(form.due_date + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
                       </p>
                     )}
                   </div>
