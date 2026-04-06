@@ -230,13 +230,62 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
                   <div>
                     <label className="text-sm font-medium text-gray-700 mb-1 block">
                       마감일 <span className="text-red-500">*</span>
+                      <span className="text-xs text-gray-400 font-normal ml-1">(AI가 틀리면 직접 수정하세요)</span>
                     </label>
-                    <input
-                      type="date"
-                      value={form.due_date}
-                      onChange={(e) => setForm({ ...form, due_date: e.target.value })}
-                      className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-300"
-                    />
+                    <div className="flex gap-2">
+                      <div className="flex-1 relative">
+                        <input
+                          type="number"
+                          min="1"
+                          max="12"
+                          value={form.due_date ? parseInt(form.due_date.split('-')[1]) : ''}
+                          onChange={(e) => {
+                            const parts = form.due_date ? form.due_date.split('-') : [new Date().getFullYear().toString(), '01', '01'];
+                            const month = e.target.value.padStart(2, '0');
+                            setForm({ ...form, due_date: `${parts[0]}-${month}-${parts[2]}` });
+                          }}
+                          placeholder="월"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">월</span>
+                      </div>
+                      <div className="flex-1 relative">
+                        <input
+                          type="number"
+                          min="1"
+                          max="31"
+                          value={form.due_date ? parseInt(form.due_date.split('-')[2]) : ''}
+                          onChange={(e) => {
+                            const parts = form.due_date ? form.due_date.split('-') : [new Date().getFullYear().toString(), '01', '01'];
+                            const day = e.target.value.padStart(2, '0');
+                            setForm({ ...form, due_date: `${parts[0]}-${parts[1]}-${day}` });
+                          }}
+                          placeholder="일"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">일</span>
+                      </div>
+                      <div className="flex-[1.5] relative">
+                        <input
+                          type="number"
+                          min="2024"
+                          max="2099"
+                          value={form.due_date ? parseInt(form.due_date.split('-')[0]) : ''}
+                          onChange={(e) => {
+                            const parts = form.due_date ? form.due_date.split('-') : [new Date().getFullYear().toString(), '01', '01'];
+                            setForm({ ...form, due_date: `${e.target.value}-${parts[1]}-${parts[2]}` });
+                          }}
+                          placeholder="연도"
+                          className="w-full border border-gray-200 rounded-xl px-3 py-3 text-sm text-center focus:outline-none focus:ring-2 focus:ring-blue-300"
+                        />
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-400">년</span>
+                      </div>
+                    </div>
+                    {form.due_date && (
+                      <p className="text-xs text-gray-400 mt-1 text-right">
+                        📅 {new Date(form.due_date + 'T00:00:00').toLocaleDateString('ko-KR', { year: 'numeric', month: 'long', day: 'numeric' })}
+                      </p>
+                    )}
                   </div>
 
                   <div>
