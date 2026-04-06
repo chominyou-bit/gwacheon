@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* FullCalendar 모바일 최적화 */
+.fc {
+  font-size: 0.8rem;
+}
+
+.fc .fc-toolbar-title {
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.fc .fc-button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+}
+
+.fc-daygrid-event {
+  cursor: pointer;
+  border-radius: 4px;
+  padding: 1px 3px;
+  font-size: 0.7rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* 스크롤바 숨기기 (모바일) */
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* 안전 영역 (아이폰 노치 대응) */
+.safe-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
