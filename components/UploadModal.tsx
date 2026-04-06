@@ -179,6 +179,24 @@ export default function UploadModal({ userId, onClose, onSuccess }: UploadModalP
                   <span className="font-semibold">갤러리에서 선택</span>
                   <span className="text-sm text-gray-400">저장된 사진을 불러와요</span>
                 </button>
+
+                <button
+                  onClick={() => {
+                    const today = new Date();
+                    today.setDate(today.getDate() + 3);
+                    setForm({
+                      subject: '',
+                      due_date: today.toISOString().split('T')[0],
+                      description: '',
+                    });
+                    setStep('review');
+                  }}
+                  className="w-full bg-green-50 border border-green-200 text-green-700 rounded-2xl py-5 flex flex-col items-center gap-2 active:scale-95 transition-transform"
+                >
+                  <span className="text-3xl">✏️</span>
+                  <span className="font-semibold">직접 입력</span>
+                  <span className="text-sm text-green-500">수기로 내용을 입력해요</span>
+                </button>
               </div>
             )}
 
