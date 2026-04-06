@@ -206,14 +206,12 @@ export default function AssignmentCard({
                   </div>
                 )}
 
-                {!showChild && (
-                  <button
-                    onClick={() => setEditing(true)}
-                    className="mt-3 w-full border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50"
-                  >
-                    ✏️ 날짜 / 내용 수정
-                  </button>
-                )}
+                <button
+                  onClick={() => setEditing(true)}
+                  className="mt-3 w-full border border-gray-200 rounded-xl py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  ✏️ 날짜 / 내용 수정
+                </button>
               </>
             ) : (
               <div className="space-y-3">
