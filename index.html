@@ -190,7 +190,7 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
   <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
     <div class="saved-hint" id="saved-hint" style="margin-bottom:0;flex:1">자동 저장됨</div>
     <button onclick="exportData()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📤 내보내기</button>
-    <label style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📥 가져오기<input type="file" accept=".json" style="display:none" onchange="importData(this)"></label>
+    <label style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📥 가져오기<input type="file" accept=".json,application/json,text/plain,*/*" style="display:none" onchange="importData(this)"></label>
   </div>
   <div class="stat-row" id="stats"></div>
 
