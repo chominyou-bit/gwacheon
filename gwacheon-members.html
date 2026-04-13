@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>과천 회원 관리</title>
+<style>
+#lock-screen{position:fixed;inset:0;background:#f5f5f0;z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif}
+#lock-screen h2{font-size:18px;font-weight:600;color:#1a1a1a;margin-bottom:4px}
+#lock-screen p{font-size:13px;color:#aaa;margin-top:-8px}
+#pin-wrap{display:flex;gap:10px}
+.pin-dot{width:14px;height:14px;border-radius:50%;background:#e0e0d8;transition:background .15s}
+.pin-dot.filled{background:#1a1a1a}
+#pin-pad{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:220px}
+.pin-btn{height:60px;border-radius:14px;border:0.5px solid #e0e0d8;background:#fff;font-size:22px;font-weight:500;color:#1a1a1a;cursor:pointer;font-family:inherit;transition:background .1s;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.pin-btn:active{background:#f0f0e8}
+.pin-btn.del{font-size:16px;color:#888}
+#lock-error{font-size:13px;color:#c0392b;height:20px;text-align:center}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:#f5f5f0;color:#1a1a1a;min-height:100vh}
+.wrap{max-width:1340px;margin:0 auto;padding:2rem 1.5rem}
+h1{font-size:20px;font-weight:600;margin-bottom:.4rem}
+.saved-hint{font-size:12px;color:#aaa;margin-bottom:1.25rem}
+.stat-row{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:1.5rem}
+.stat{background:#fff;border-radius:10px;padding:13px 15px;border:0.5px solid #e0e0d8}
+.stat-label{font-size:11px;color:#888;margin-bottom:3px}
+.stat-num{font-size:22px;font-weight:600}
+.tab-header{display:flex;border-bottom:2px solid #e0e0d8;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.tab-header::-webkit-scrollbar{display:none}
+.tab-btn{font-size:14px;padding:10px 22px;border:none;background:none;color:#aaa;cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-2px;font-family:inherit;font-weight:500;white-space:nowrap;flex-shrink:0}
+.tab-btn.active{color:#1a1a1a;border-bottom-color:#1a1a1a}
+.tab-pane{display:none;padding-top:1.25rem}
+.tab-pane.active{display:block}
+.controls{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.f-btn{font-size:13px;padding:7px 16px;border-radius:20px;border:0.5px solid #ccc;background:#fff;color:#666;cursor:pointer}
+.f-btn.active{background:#1a1a1a;color:#fff;border-color:#1a1a1a;font-weight:500}
+.search-wrap{flex:1;min-width:180px}
+.search-wrap input{width:100%;padding:8px 14px;border-radius:20px;border:0.5px solid #ccc;font-size:13px;background:#fff;outline:none;font-family:inherit}
+.add-btn{font-size:13px;padding:8px 18px;border-radius:20px;border:0.5px solid #3b6d11;background:#eaf3de;color:#3b6d11;cursor:pointer;font-weight:500;white-space:nowrap;font-family:inherit}
+.tbl-wrap{background:#fff;border-radius:12px;border:0.5px solid #e0e0d8;overflow:hidden;overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px;min-width:1040px}
+thead th{font-size:12px;font-weight:500;color:#888;padding:10px 11px;border-bottom:0.5px solid #e8e8e0;text-align:left;background:#fafaf8;white-space:nowrap}
+tbody tr{border-bottom:0.5px solid #f0f0e8}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:#fafaf8}
+td{padding:9px 11px;vertical-align:middle}
+.section-row td{background:#f5f5f0;font-size:11px;font-weight:600;color:#888;padding:6px 12px;letter-spacing:.5px;border-bottom:0.5px solid #e8e8e0}
+.badge{display:inline-block;font-size:11px;padding:2px 9px;border-radius:20px;font-weight:500;white-space:nowrap}
+.b-odd{background:#e6f1fb;color:#185fa5}.b-even{background:#eaf3de;color:#3b6d11}.b-both{background:#eeedfe;color:#534ab7}
+.b-hold{background:#faeeda;color:#854f0b}.b-out{background:#fcebeb;color:#a32d2d}
+.b-card{background:#eeedfe;color:#534ab7}.b-cash{background:#f1efe8;color:#5f5e5a}
+.rc-num{font-size:12px;color:#333;font-family:monospace;letter-spacing:.3px}
+.rc-dash{font-size:12px;color:#ccc}
+.rc-miss{font-size:11px;color:#e07a30;background:#fff3eb;padding:1px 7px;border-radius:10px}
+.paid-row td{opacity:.38}.paid-row td:nth-child(9),.paid-row td:nth-child(10){opacity:1}
+input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6d11}
+.out-row td{color:#bbb}.out-row td:nth-child(5){opacity:1}
+.note-cell{font-size:12px;color:#888;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.no-result{padding:3rem;text-align:center;color:#aaa;font-size:14px}
+.ei{font-size:12px;padding:4px 7px;border-radius:6px;border:0.5px solid #ccc;background:#fff;color:#1a1a1a;width:100%;font-family:inherit;outline:none}
+.ab{font-size:11px;padding:4px 9px;border-radius:6px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;display:block;margin-bottom:3px;width:100%;font-family:inherit}
+.ab:hover{background:#f5f5f0}.ab.save{border-color:#3b6d11;color:#3b6d11}.ab.del{border-color:#c0392b;color:#c0392b}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:200;align-items:center;justify-content:center}
+.modal-bg.open{display:flex}
+.modal{background:#fff;border-radius:16px;padding:1.75rem;width:480px;max-width:94vw;box-shadow:0 8px 32px rgba(0,0,0,.18)}
+.modal h2{font-size:16px;font-weight:600;margin-bottom:1.25rem}
+.mg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:1.25rem}
+.mg .full{grid-column:1/-1}
+.field label{font-size:12px;color:#888;display:block;margin-bottom:4px}
+.field input,.field select{width:100%;padding:8px 10px;border-radius:8px;border:0.5px solid #ccc;font-size:13px;font-family:inherit;outline:none;background:#fff}
+.ma{display:flex;gap:8px;justify-content:flex-end}
+.btn-c{padding:9px 20px;border-radius:8px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-size:13px;font-family:inherit}
+.btn-s{padding:9px 20px;border-radius:8px;border:none;background:#1a1a1a;color:#fff;cursor:pointer;font-size:13px;font-family:inherit;font-weight:500}
+.pay-tbl-wrap{background:#fff;border-radius:12px;border:0.5px solid #e0e0d8;overflow:hidden;overflow-x:auto}
+.pt{width:100%;border-collapse:collapse;font-size:13px;min-width:660px}
+.pt thead th{font-size:12px;font-weight:500;color:#888;padding:10px 14px;border-bottom:0.5px solid #e8e8e0;text-align:left;background:#fafaf8;white-space:nowrap}
+.pt tbody tr{border-bottom:0.5px solid #f0f0e8}.pt tbody tr:last-child{border-bottom:none}.pt tbody tr:hover{background:#fafaf8}
+.pt td{padding:10px 14px;vertical-align:middle}
+.paid-pay td{opacity:.38}.paid-pay td:last-child{opacity:1}
+.day-b{display:inline-block;min-width:44px;text-align:center;font-size:13px;font-weight:600;padding:3px 10px;border-radius:20px}
+.d-odd{background:#e6f1fb;color:#185fa5}.d-even{background:#eaf3de;color:#3b6d11}
+.reset-btn{font-size:12px;padding:6px 14px;border-radius:20px;border:0.5px solid #ccc;background:#fff;color:#666;cursor:pointer;font-family:inherit}
+.snap-header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem}
+.snap-save-btn{font-size:13px;padding:8px 18px;border-radius:20px;border:0.5px solid #185fa5;background:#e6f1fb;color:#185fa5;cursor:pointer;font-weight:500;font-family:inherit}
+.snap-list{display:flex;flex-direction:column;gap:10px}
+.snap-card{background:#fff;border:0.5px solid #e0e0d8;border-radius:12px;overflow:hidden}
+.snap-card-head{display:flex;align-items:center;justify-content:space-between;padding:13px 16px;cursor:pointer;user-select:none}
+.snap-card-head:hover{background:#fafaf8}
+.snap-title{font-size:14px;font-weight:500}.snap-meta{font-size:12px;color:#aaa}
+.snap-del{font-size:11px;padding:3px 10px;border-radius:6px;border:0.5px solid #ccc;background:#fff;color:#aaa;cursor:pointer;font-family:inherit}
+.snap-del:hover{border-color:#c0392b;color:#c0392b}
+.snap-body{display:none;padding:0 16px 16px}.snap-body.open{display:block}
+.snap-sec{font-size:12px;font-weight:500;color:#555;margin:14px 0 6px;padding-bottom:4px;border-bottom:0.5px solid #e8e8e0}
+.snap-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.snap-tbl th{font-size:11px;color:#aaa;padding:6px 8px;border-bottom:0.5px solid #e8e8e0;text-align:left;background:#fafaf8}
+.snap-tbl td{padding:6px 8px;border-bottom:0.5px solid #f0f0e8;vertical-align:middle}
+.snap-tbl tr:last-child td{border-bottom:none}
+.empty-snap{padding:2.5rem;text-align:center;color:#aaa;font-size:14px;line-height:1.8}
+.b-tag-new{background:#fde8f0;color:#b0195a}.b-tag-newsib{background:#f8d7e8;color:#8c0f47}
+.b-tag-active{background:#e2f5e2;color:#1e7a2e}.b-tag-hold{background:#fef3e0;color:#8a5000}
+.b-tag-out{background:#fde8e8;color:#9b1c1c}.b-tag-sib{background:#fff0e0;color:#b05000}
+.b-tag-sibm{background:#ffe4c8;color:#a03800}.b-tag-etc{background:#ede8f8;color:#5535a0}
+.sched-cell{min-height:20px;padding:2px 4px;border-radius:4px;outline:none;font-size:13px;min-width:60px;line-height:1.5}
+.sched-cell:focus{background:#f0f8f0;box-shadow:0 0 0 1.5px #3b6d11}
+
+/* ── 모바일 반응형 ── */
+@media(max-width:640px){
+  .wrap{padding:1rem .75rem}
+  h1{font-size:17px}
+  .stat-row{grid-template-columns:repeat(2,1fr);gap:8px;margin-bottom:1rem}
+  .stat{padding:10px 12px}
+  .stat-num{font-size:18px}
+  .controls{gap:6px}
+  .f-btn{font-size:12px;padding:6px 12px}
+  .search-wrap{min-width:100%;order:10}
+  table{min-width:700px;font-size:12px}
+  thead th{padding:8px 8px;font-size:11px}
+  td{padding:7px 8px}
+  .pt{min-width:500px}
+  .pt td,.pt thead th{padding:8px 10px}
+}
+
+@media(prefers-color-scheme:dark){
+  #lock-screen{background:#1a1a1a}
+  #lock-screen h2{color:#e8e8e0}
+  .pin-btn{background:#242424;border-color:#333;color:#e8e8e0}
+  .pin-btn:active{background:#333}
+  .pin-dot{background:#333}.pin-dot.filled{background:#e8e8e0}
+  body{background:#1a1a1a;color:#e8e8e0}
+  .stat,.tbl-wrap,.pay-tbl-wrap,.modal,.snap-card{background:#242424;border-color:#333}
+  .stat-num,h1{color:#e8e8e0}
+  .f-btn{background:#242424;color:#aaa;border-color:#444}
+  .f-btn.active{background:#e8e8e0;color:#1a1a1a}
+  .search-wrap input{background:#242424;color:#e8e8e0;border-color:#444}
+  .add-btn{background:#1a3010;border-color:#3b6d11}
+  thead th,.pt thead th,.snap-tbl th{background:#1e1e1e;color:#888}
+  tbody tr,.pt tbody tr,.snap-tbl tr{border-color:#2a2a2a}
+  tbody tr:hover,.pt tbody tr:hover,.snap-card-head:hover{background:#2a2a2a}
+  .ei,.field input,.field select{background:#2a2a2a;color:#e8e8e0;border-color:#444}
+  .ab,.btn-c,.reset-btn,.snap-del{background:#2a2a2a;color:#aaa;border-color:#444}
+  .modal{background:#242424}.modal h2{color:#e8e8e0}
+  .tab-header{border-color:#333}.tab-btn{color:#666}.tab-btn.active{color:#e8e8e0;border-bottom-color:#e8e8e0}
+  .rc-num{color:#c8c8c0}.rc-miss{background:#3a2010;color:#f0a060}
+  .section-row td{background:#1e1e1e;color:#666}
+  .snap-body{background:#1e1e1e}.snap-sec{color:#888;border-color:#333}
+  .snap-save-btn{background:#0c2a4a;border-color:#185fa5}
+  .b-odd{background:#0c447c;color:#b5d4f4}.b-even{background:#27500a;color:#c0dd97}
+  .b-hold{background:#633806;color:#fac775}.b-out{background:#791f1f;color:#f7c1c1}
+  .b-card{background:#3c3489;color:#cecbf6}.b-cash{background:#444441;color:#d3d1c7}
+  .b-both{background:#3c3489;color:#cecbf6}
+  .d-odd{background:#0c447c;color:#b5d4f4}.d-even{background:#27500a;color:#c0dd97}
+  .b-tag-new{background:#4a0a25;color:#f9a8d4}.b-tag-newsib{background:#3a0820;color:#f472b6}
+  .b-tag-active{background:#0f3a18;color:#86efac}.b-tag-hold{background:#3a2000;color:#fcd38a}
+  .b-tag-out{background:#3a0a0a;color:#fca5a5}.b-tag-sib{background:#3a1f00;color:#fdba74}
+  .b-tag-sibm{background:#3a1400;color:#fb923c}.b-tag-etc{background:#1e1640;color:#c4b5fd}
+}
+</style>
+</head>
+<body>
+
+<!-- 비밀번호 화면 -->
+<div id="lock-screen">
+  <h2>🔒 과천 회원 관리</h2>
+  <p>비밀번호 4자리를 입력하세요</p>
+  <div id="pin-wrap">
+    <div class="pin-dot" id="d0"></div>
+    <div class="pin-dot" id="d1"></div>
+    <div class="pin-dot" id="d2"></div>
+    <div class="pin-dot" id="d3"></div>
+  </div>
+  <div id="lock-error"></div>
+  <div id="pin-pad">
+    <button class="pin-btn" onclick="pinInput('1')">1</button>
+    <button class="pin-btn" onclick="pinInput('2')">2</button>
+    <button class="pin-btn" onclick="pinInput('3')">3</button>
+    <button class="pin-btn" onclick="pinInput('4')">4</button>
+    <button class="pin-btn" onclick="pinInput('5')">5</button>
+    <button class="pin-btn" onclick="pinInput('6')">6</button>
+    <button class="pin-btn" onclick="pinInput('7')">7</button>
+    <button class="pin-btn" onclick="pinInput('8')">8</button>
+    <button class="pin-btn" onclick="pinInput('9')">9</button>
+    <button class="pin-btn del" onclick="pinDel()">⌫</button>
+    <button class="pin-btn" onclick="pinInput('0')">0</button>
+    <button class="pin-btn del" onclick="pinClear()">✕</button>
+  </div>
+</div>
+
+<div class="wrap" id="main-app" style="display:none">
+  <h1>과천 회원 관리 · 2026</h1>
+  <div style="display:flex;align-items:center;gap:8px;margin-bottom:1.25rem;flex-wrap:wrap">
+    <div class="saved-hint" id="saved-hint" style="margin-bottom:0;flex:1">자동 저장됨</div>
+    <button onclick="exportData()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📤 내보내기</button>
+    <label style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📥 가져오기<input type="file" accept=".json,application/json,text/plain,*/*" style="display:none" onchange="importData(this)"></label>
+    <div style="position:relative;display:inline-block" id="print-wrap">
+      <button onclick="togglePrintMenu()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">🖨️ 인쇄/PDF ▾</button>
+      <div id="print-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #ccc;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:100;min-width:130px;overflow:hidden">
+        <div onclick="printList('all')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#333" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">📋 전체 명단</div>
+        <div onclick="printList('odd')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#185fa5;border-top:0.5px solid #f0f0e8" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">🔵 홀수 납부</div>
+        <div onclick="printList('even')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#3b6d11;border-top:0.5px solid #f0f0e8" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">🟢 짝수 납부</div>
+      </div>
+    </div>
+  </div>
+  <div class="stat-row" id="stats"></div>
+
+  <div class="tab-header">
+    <button class="tab-btn active" onclick="switchTab('list',this)">전체 명단</button>
+    <button class="tab-btn" onclick="switchTab('odd',this)">홀수 납부</button>
+    <button class="tab-btn" onclick="switchTab('even',this)">짝수 납부</button>
+    <button class="tab-btn" onclick="switchTab('schedule',this)">스케줄</button>
+    <button class="tab-btn" onclick="switchTab('snap',this)">월별 기록</button>
+  </div>
+
+  <div id="tab-list" class="tab-pane active">
+    <div class="controls">
+      <button class="f-btn active" onclick="setFilter('all',this)">전체</button>
+      <button class="f-btn" onclick="setFilter('active',this)">재원+홀딩</button>
+      <button class="f-btn" onclick="setFilter('odd',this)">홀수</button>
+      <button class="f-btn" onclick="setFilter('even',this)">짝수</button>
+      <button class="f-btn" onclick="setFilter('hold',this)">홀딩</button>
+      <button class="f-btn" onclick="setFilter('out',this)">탈퇴</button>
+      <div class="search-wrap"><input type="text" id="search" placeholder="이름·현금영수증번호 검색…" oninput="render()"></div>
+      <button class="add-btn" onclick="openModal()">+ 회원 추가</button>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr>
+          <th style="width:32px">번호</th><th>이름</th><th>등록일</th><th>결제일</th>
+          <th>구분</th><th>결제방법</th><th>현금영수증 번호</th><th>특이사항</th>
+          <th style="width:52px;text-align:center">결제✓</th><th style="width:60px">편집</th>
+        </tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+      <div id="no-result" class="no-result" style="display:none">검색 결과가 없습니다.</div>
+    </div>
+  </div>
+
+  <div id="tab-odd" class="tab-pane">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+      <p style="font-size:13px;color:#888">홀수 날짜 납부 · 결제일 오름차순</p>
+      <button class="reset-btn" onclick="resetPay('odd')">이번 달 체크 초기화</button>
+    </div>
+    <div class="pay-tbl-wrap">
+      <table class="pt">
+        <thead><tr>
+          <th style="width:90px">번호</th><th style="width:70px">결제일</th><th>이름</th>
+          <th style="width:74px">결제방법</th><th>현금영수증 번호</th><th>특이사항</th>
+          <th style="width:58px;text-align:center">결제✓</th>
+        </tr></thead>
+        <tbody id="odd-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:2.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem">
+        <p style="font-size:14px;font-weight:500">월별 정산</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="odd-settle-month" class="ei" style="width:90px" onchange="renderSettle('odd')"></select>
+          <button class="add-btn" onclick="addSettleRow('odd')">+ 수동 추가</button>
+          <button class="snap-save-btn" style="font-size:12px;padding:6px 14px" onclick="autoFillSettle('odd')">자동 채우기</button>
+        </div>
+      </div>
+      <div id="odd-settle-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem"></div>
+      <div class="pay-tbl-wrap">
+        <table class="pt" style="min-width:780px">
+          <thead><tr>
+            <th style="width:70px">월</th><th>이름</th><th>구분</th>
+            <th style="width:90px;text-align:right">금액</th><th style="width:80px">결제방법</th>
+            <th style="width:80px">입금일</th><th>메모</th>
+            <th style="width:54px;text-align:center">입금✓</th><th style="width:36px;text-align:center">삭제</th>
+          </tr></thead>
+          <tbody id="odd-settle-tbody"></tbody>
+          <tfoot id="odd-settle-tfoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-even" class="tab-pane">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
+      <p style="font-size:13px;color:#888">짝수 날짜 납부 · 결제일 오름차순</p>
+      <button class="reset-btn" onclick="resetPay('even')">이번 달 체크 초기화</button>
+    </div>
+    <div class="pay-tbl-wrap">
+      <table class="pt">
+        <thead><tr>
+          <th style="width:90px">번호</th><th style="width:70px">결제일</th><th>이름</th>
+          <th style="width:74px">결제방법</th><th>현금영수증 번호</th><th>특이사항</th>
+          <th style="width:58px;text-align:center">결제✓</th>
+        </tr></thead>
+        <tbody id="even-tbody"></tbody>
+      </table>
+    </div>
+    <div style="margin-top:2.5rem">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:.75rem">
+        <p style="font-size:14px;font-weight:500">월별 정산</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select id="even-settle-month" class="ei" style="width:90px" onchange="renderSettle('even')"></select>
+          <button class="add-btn" onclick="addSettleRow('even')">+ 수동 추가</button>
+          <button class="snap-save-btn" style="font-size:12px;padding:6px 14px" onclick="autoFillSettle('even')">자동 채우기</button>
+        </div>
+      </div>
+      <div id="even-settle-summary" style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:1rem"></div>
+      <div class="pay-tbl-wrap">
+        <table class="pt" style="min-width:780px">
+          <thead><tr>
+            <th style="width:70px">월</th><th>이름</th><th>구분</th>
+            <th style="width:90px;text-align:right">금액</th><th style="width:80px">결제방법</th>
+            <th style="width:80px">입금일</th><th>메모</th>
+            <th style="width:54px;text-align:center">입금✓</th><th style="width:36px;text-align:center">삭제</th>
+          </tr></thead>
+          <tbody id="even-settle-tbody"></tbody>
+          <tfoot id="even-settle-tfoot"></tfoot>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-schedule" class="tab-pane">
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:1rem">
+      <p style="font-size:13px;color:#888">셀 클릭으로 수정 · 자동 저장</p>
+      <button class="add-btn" onclick="addScheduleRow()">+ 행 추가</button>
+    </div>
+    <div class="tbl-wrap">
+      <table id="sched-table" style="min-width:600px">
+        <thead><tr>
+          <th style="width:100px">시간</th>
+          <th>화 <input type="color" id="color-tue" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('tue',this.value)"></th>
+          <th>수 <input type="color" id="color-wed" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('wed',this.value)"></th>
+          <th>목 <input type="color" id="color-thu" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('thu',this.value)"></th>
+          <th style="width:50px;text-align:center">삭제</th>
+        </tr></thead>
+        <tbody id="sched-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div id="tab-snap" class="tab-pane">
+    <div class="snap-header">
+      <p style="font-size:13px;color:#888">매월 말 스냅샷으로 저장 · 재원+홀딩 포함</p>
+      <button class="snap-save-btn" onclick="saveSnapshot()">📷 이번 달 저장</button>
+    </div>
+    <div id="snap-list" class="snap-list"></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg" onclick="bgClose(event)">
+  <div class="modal">
+    <h2>회원 추가</h2>
+    <div class="mg">
+      <div class="field full"><label>이름 (형제는 · 로 구분)</label><input type="text" id="m-name" placeholder="예: 김철수·영희"></div>
+      <div class="field"><label>등록일</label><input type="text" id="m-reg" placeholder="예: 4월 7일"></div>
+      <div class="field"><label>결제일</label><input type="text" id="m-pay" placeholder="예: 15일"></div>
+      <div class="field"><label>홀수/짝수/매월</label>
+        <select id="m-type"><option value="odd">홀수</option><option value="even">짝수</option><option value="both">매월</option></select>
+      </div>
+      <div class="field"><label>결제방법</label>
+        <select id="m-card"><option value="0">현금</option><option value="1">카드</option></select>
+      </div>
+      <div class="field"><label>현금영수증 번호</label><input type="text" id="m-receipt" placeholder="010-0000-0000"></div>
+      <div class="field full"><label>특이사항</label><input type="text" id="m-note" placeholder="형제, 이관, 변경 이력 등"></div>
+    </div>
+    <div class="ma">
+      <button class="btn-c" onclick="closeModal()">취소</button>
+      <button class="btn-s" onclick="addMember()">추가</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── 비밀번호 ──────────────────────────────────────────────
+const CORRECT_PIN = '1587';
+let pinBuffer = '';
+
+function checkAuth() {
+  if (sessionStorage.getItem('gwacheon_auth') === 'ok') unlock();
+}
+function pinInput(n) {
+  if (pinBuffer.length >= 4) return;
+  pinBuffer += n;
+  updateDots();
+  if (pinBuffer.length === 4) {
+    setTimeout(() => {
+      if (pinBuffer === CORRECT_PIN) {
+        sessionStorage.setItem('gwacheon_auth', 'ok');
+        unlock();
+      } else {
+        document.getElementById('lock-error').textContent = '비밀번호가 틀렸습니다';
+        pinBuffer = '';
+        updateDots();
+        setTimeout(() => { document.getElementById('lock-error').textContent = ''; }, 1500);
+      }
+    }, 150);
+  }
+}
+function pinDel() { pinBuffer = pinBuffer.slice(0,-1); updateDots(); }
+function pinClear() { pinBuffer = ''; updateDots(); }
+function updateDots() {
+  for (let i=0;i<4;i++) document.getElementById('d'+i).classList.toggle('filled', i < pinBuffer.length);
+}
+function unlock() {
+  document.getElementById('lock-screen').style.display = 'none';
+  document.getElementById('main-app').style.display = 'block';
+  initApp();
+}
+
+// ── 데이터 ────────────────────────────────────────────────
+const DEFAULTS = [
+  {id:1,no:1,name:"손필원",reg:"12월 9일",regOrder:1,pay:"4일",payDay:4,type:"odd",status:"active",isCard:false,receipt:"010-9357-1166",note:"",tags:['active']},
+  {id:2,no:2,name:"박시우",reg:"12월 9일",regOrder:2,pay:"1일",payDay:1,type:"even",status:"active",isCard:false,receipt:"010-4523-0220",note:"홀→짝 변경",tags:['active']},
+  {id:3,no:3,name:"최서준",reg:"12월 23일",regOrder:3,pay:"23일",payDay:23,type:"even",status:"active",isCard:false,receipt:"010-3840-5690",note:"",tags:['active']},
+  {id:4,no:4,name:"박하이",reg:"12월 30일",regOrder:4,pay:"4일",payDay:4,type:"even",status:"active",isCard:false,receipt:"",note:"출산 홀딩 이력",tags:['active']},
+  {id:5,no:5,name:"정다은·진우",reg:"12월 23일",regOrder:5,pay:"2일",payDay:2,type:"odd",status:"active",isCard:false,receipt:"",note:"형제",tags:['active']},
+  {id:6,no:6,name:"이준석·수인",reg:"12월 23일",regOrder:6,pay:"2일",payDay:2,type:"odd",status:"active",isCard:false,receipt:"",note:"형제",tags:['active']},
+  {id:7,no:7,name:"김현서·민서",reg:"12월 30일",regOrder:7,pay:"2일",payDay:2,type:"odd",status:"active",isCard:false,receipt:"010-5179-7896",note:"",tags:['active']},
+  {id:8,no:8,name:"김소은",reg:"12월 30일",regOrder:8,pay:"9일",payDay:9,type:"odd",status:"active",isCard:false,receipt:"010-3126-0923",note:"",tags:['active']},
+  {id:9,no:9,name:"홍채원·채린",reg:"1월 4일",regOrder:9,pay:"8일",payDay:8,type:"even",status:"active",isCard:false,receipt:"010-5298-6627",note:"홀→짝 변경",tags:['active']},
+  {id:10,no:10,name:"경하율",reg:"2월 1일",regOrder:10,pay:"1일",payDay:1,type:"even",status:"active",isCard:false,receipt:"010-9372-8412",note:"이관",tags:['active']},
+  {id:11,no:11,name:"김윤주",reg:"3월 2일",regOrder:11,pay:"9일",payDay:9,type:"odd",status:"active",isCard:false,receipt:"010-6299-9195",note:"",tags:['active']},
+  {id:12,no:12,name:"정재인·도윤",reg:"4월 13일",regOrder:12,pay:"13일",payDay:13,type:"even",status:"active",isCard:false,receipt:"010-2748-0781",note:"",tags:['active']},
+  {id:13,no:13,name:"오예은·아인",reg:"5월 25일",regOrder:13,pay:"22일",payDay:22,type:"even",status:"active",isCard:false,receipt:"",note:"홀수→짝수 변경",tags:['active']},
+  {id:14,no:14,name:"김가언·서아",reg:"7월 5일",regOrder:14,pay:"5일",payDay:5,type:"odd",status:"active",isCard:false,receipt:"",note:"형제",tags:['active']},
+  {id:15,no:15,name:"전아영",reg:"7월 28일",regOrder:15,pay:"21일",payDay:21,type:"odd",status:"active",isCard:false,receipt:"010-4128-3336",note:"짝→홀 변경",tags:['active']},
+  {id:16,no:16,name:"구다인·하민·하진",reg:"9월 1일",regOrder:16,pay:"7일",payDay:7,type:"odd",status:"active",isCard:false,receipt:"010-3444-9444",note:"",tags:['active']},
+  {id:17,no:17,name:"김보민·보겸",reg:"9월 13일",regOrder:17,pay:"27일",payDay:27,type:"even",status:"active",isCard:false,receipt:"010-9204-6967",note:"",tags:['active']},
+  {id:18,no:18,name:"고은수",reg:"9월 8일",regOrder:18,pay:"13일",payDay:13,type:"odd",status:"active",isCard:false,receipt:"010-2541-6524",note:"",tags:['active']},
+  {id:19,no:19,name:"김연서·희찬",reg:"9월 8일",regOrder:19,pay:"13일",payDay:13,type:"odd",status:"active",isCard:false,receipt:"010-4009-6138",note:"",tags:['active']},
+  {id:20,no:"탈퇴",name:"이준혁",reg:"9월 20일",regOrder:20,pay:"27일",payDay:27,type:"odd",status:"out",isCard:false,receipt:"",note:""},
+  {id:21,no:21,name:"유다은·채은",reg:"10월 20일",regOrder:21,pay:"27일",payDay:27,type:"even",status:"active",isCard:false,receipt:"010-7445-5775",note:"",tags:['active']},
+  {id:22,no:22,name:"김가율·소율·지율",reg:"11월 8일",regOrder:22,pay:"8일",payDay:8,type:"odd",status:"active",isCard:false,receipt:"010-8742-1712",note:"평촌 이관",tags:['active']},
+  {id:23,no:23,name:"박동우·동규",reg:"1월 4일",regOrder:23,pay:"4일",payDay:4,type:"odd",status:"active",isCard:false,receipt:"010-6354-2838",note:"",tags:['active']},
+  {id:24,no:"탈퇴",name:"김하랑·다은",reg:"1월 4일",regOrder:24,pay:"4일",payDay:4,type:"odd",status:"out",isCard:false,receipt:"010-4525-8100",note:""},
+  {id:25,no:25,name:"오수아·윤재",reg:"1월 4일",regOrder:25,pay:"4일",payDay:4,type:"odd",status:"active",isCard:false,receipt:"010-2553-0913",note:"",tags:['active']},
+  {id:26,no:26,name:"윤승아·승우",reg:"1월 11일",regOrder:26,pay:"11일",payDay:11,type:"odd",status:"active",isCard:false,receipt:"010-2712-7747",note:"",tags:['active']},
+  {id:27,no:"탈퇴",name:"이우리·나라",reg:"1월 16일",regOrder:27,pay:"16일",payDay:16,type:"odd",status:"out",isCard:false,receipt:"010-9949-8079",note:""},
+  {id:28,no:28,name:"엄세원·선우·진우",reg:"1월 30일",regOrder:28,pay:"30일",payDay:30,type:"odd",status:"active",isCard:false,receipt:"010-9237-8697",note:"",tags:['active']},
+  {id:29,no:29,name:"김수호",reg:"2월 20일",regOrder:29,pay:"1일",payDay:1,type:"even",status:"active",isCard:false,receipt:"010-2083-3781",note:"홀→짝 변경",tags:['active']},
+  {id:30,no:"홀딩",name:"조승효",reg:"3월 7일",regOrder:30,pay:"14일",payDay:14,type:"odd",status:"hold",isCard:false,receipt:"010-8641-9083",note:""},
+  {id:31,no:31,name:"이강진·지수",reg:"3월 14일",regOrder:31,pay:"14일",payDay:14,type:"odd",status:"active",isCard:false,receipt:"010-8641-9083",note:"",tags:['active']},
+  {id:32,no:32,name:"심서윤",reg:"3월 14일",regOrder:32,pay:"21일",payDay:21,type:"odd",status:"active",isCard:false,receipt:"010-9079-2203",note:"",tags:['active']},
+  {id:33,no:33,name:"김은서",reg:"3월 21일",regOrder:33,pay:"21일",payDay:21,type:"odd",status:"active",isCard:false,receipt:"010-3163-3788",note:"",tags:['active']},
+  {id:34,no:34,name:"박예강·예솔",reg:"3월 28일",regOrder:34,pay:"28일",payDay:28,type:"odd",status:"active",isCard:false,receipt:"010-5197-2420",note:"",tags:['active']},
+  {id:35,no:35,name:"오하라·수현",reg:"4월 17일",regOrder:35,pay:"17일",payDay:17,type:"even",status:"active",isCard:false,receipt:"",note:"",tags:['active']},
+  {id:36,no:36,name:"유승주",reg:"4월 17일",regOrder:36,pay:"24일",payDay:24,type:"even",status:"active",isCard:false,receipt:"010-2108-1033",note:"",tags:['active']},
+  {id:37,no:"홀딩",name:"김지유·준희",reg:"5월 7일",regOrder:37,pay:"7일",payDay:7,type:"odd",status:"hold",isCard:false,receipt:"010-8080-2752",note:""},
+  {id:38,no:38,name:"이수현",reg:"5월 9일",regOrder:38,pay:"1일",payDay:1,type:"odd",status:"active",isCard:true,receipt:"",note:"카드 변경",tags:['active']},
+  {id:39,no:39,name:"이승후·현서",reg:"5월 16일",regOrder:39,pay:"16일",payDay:16,type:"odd",status:"active",isCard:false,receipt:"010-3207-5533",note:"",tags:['active']},
+  {id:40,no:40,name:"김규아",reg:"6월 13일",regOrder:40,pay:"10일",payDay:10,type:"odd",status:"active",isCard:false,receipt:"010-2186-0479",note:"짝→홀 변경",tags:['active']},
+  {id:41,no:41,name:"정지아",reg:"7월 4일",regOrder:41,pay:"4일",payDay:4,type:"odd",status:"active",isCard:false,receipt:"",note:"",tags:['active']},
+  {id:42,no:42,name:"박정진·정연",reg:"7월 30일",regOrder:42,pay:"30일",payDay:30,type:"odd",status:"active",isCard:false,receipt:"010-3214-1223",note:"형제"},
+  {id:43,no:43,name:"조서윤",reg:"8월 6일",regOrder:43,pay:"6일",payDay:6,type:"even",status:"active",isCard:false,receipt:"010-9040-2648",note:""},
+  {id:44,no:44,name:"조여름",reg:"8월 6일",regOrder:44,pay:"6일",payDay:6,type:"even",status:"active",isCard:false,receipt:"010-2225-3883",note:""},
+  {id:45,no:45,name:"이시은·샘결",reg:"8월 13일",regOrder:45,pay:"13일",payDay:13,type:"even",status:"active",isCard:false,receipt:"010-6765-3077",note:""},
+  {id:46,no:46,name:"송채은·시윤",reg:"8월 13일",regOrder:46,pay:"13일",payDay:13,type:"both",status:"active",isCard:false,receipt:"",note:"형제 매월결제"},
+  {id:47,no:47,name:"최서령·혜담",reg:"8월 22일",regOrder:47,pay:"22일",payDay:22,type:"even",status:"active",isCard:false,receipt:"010-3793-7808",note:""},
+  {id:48,no:48,name:"김진영",reg:"9월 24일",regOrder:48,pay:"24일",payDay:24,type:"even",status:"active",isCard:false,receipt:"010-9685-1070",note:"홀→짝 변경"},
+  {id:49,no:49,name:"여주안",reg:"10월 8일",regOrder:49,pay:"8일",payDay:8,type:"even",status:"active",isCard:true,receipt:"010-5689-6168",note:""},
+  {id:50,no:50,name:"하동주·동우",reg:"1월 16일",regOrder:50,pay:"16일",payDay:16,type:"even",status:"active",isCard:true,receipt:"",note:"형제"},
+  {id:51,no:51,name:"신연서·유철",reg:"11월 14일",regOrder:51,pay:"14일",payDay:14,type:"odd",status:"active",isCard:true,receipt:"",note:"형제"},
+  {id:52,no:"탈퇴",name:"유승현",reg:"12월 10일",regOrder:52,pay:"10일",payDay:10,type:"even",status:"out",isCard:true,receipt:"",note:""},
+  {id:53,no:53,name:"신승윤",reg:"1월 1일",regOrder:53,pay:"1일",payDay:1,type:"even",status:"active",isCard:true,receipt:"",note:"형제"},
+  {id:54,no:54,name:"최명준",reg:"1월 1일",regOrder:54,pay:"5일",payDay:5,type:"even",status:"active",isCard:false,receipt:"010-5137-3013",note:"홀→짝 변경"},
+  {id:55,no:55,name:"김윤후",reg:"1월 7일",regOrder:55,pay:"7일",payDay:7,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:56,no:56,name:"민지후·지아",reg:"1월 14일",regOrder:56,pay:"21일",payDay:21,type:"odd",status:"active",isCard:true,receipt:"",note:"형제"},
+  {id:57,no:57,name:"강수진·수림",reg:"2월 4일",regOrder:57,pay:"4일",payDay:4,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:58,no:58,name:"박서진",reg:"2월 17일",regOrder:58,pay:"13일",payDay:13,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:59,no:59,name:"이다은·중훈",reg:"2월 25일",regOrder:59,pay:"25일",payDay:25,type:"even",status:"active",isCard:false,receipt:"010-9080-2041",note:""},
+  {id:60,no:60,name:"우지완·지윤",reg:"2월 27일",regOrder:60,pay:"27일",payDay:27,type:"even",status:"active",isCard:true,receipt:"",note:"형제"},
+  {id:61,no:61,name:"허지윤·소윤",reg:"3월 6일",regOrder:61,pay:"3일",payDay:3,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:62,no:62,name:"문채은",reg:"3월 13일",regOrder:62,pay:"13일",payDay:13,type:"odd",status:"active",isCard:false,receipt:"010-2952-8515",note:""},
+  {id:63,no:63,name:"이재원·준희",reg:"3월 29일",regOrder:63,pay:"29일",payDay:29,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:64,no:64,name:"김재이·태이",reg:"5월 1일",regOrder:64,pay:"1일",payDay:1,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:65,no:65,name:"윤준호·송이",reg:"6월 18일",regOrder:65,pay:"18일",payDay:18,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:66,no:66,name:"안지윤",reg:"6월 19일",regOrder:66,pay:"19일",payDay:19,type:"even",status:"active",isCard:false,receipt:"010-8933-6533",note:""},
+  {id:67,no:67,name:"박서윤·서율",reg:"7월 3일",regOrder:67,pay:"3일",payDay:3,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:68,no:68,name:"이진우·선우",reg:"7월 8일",regOrder:68,pay:"8일",payDay:8,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:69,no:69,name:"김승우",reg:"7월 31일",regOrder:69,pay:"1일",payDay:1,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:70,no:70,name:"강솔인·강재인",reg:"8월 1일",regOrder:70,pay:"1일",payDay:1,type:"even",status:"active",isCard:false,receipt:"010-3306-6439",note:""},
+  {id:71,no:71,name:"하정연",reg:"8월 12일",regOrder:71,pay:"12일",payDay:12,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:72,no:72,name:"양지안",reg:"8월 21일",regOrder:72,pay:"21일",payDay:21,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:73,no:73,name:"이지안",reg:"9월 2일",regOrder:73,pay:"2일",payDay:2,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:74,no:74,name:"김서율",reg:"9월 9일",regOrder:74,pay:"9일",payDay:9,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:75,no:75,name:"김나윤",reg:"10월 14일",regOrder:75,pay:"13일",payDay:13,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:76,no:76,name:"이연준·하준",reg:"10월 21일",regOrder:76,pay:"21일",payDay:21,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:77,no:77,name:"서연우",reg:"10월 23일",regOrder:77,pay:"23일",payDay:23,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:78,no:78,name:"이지성",reg:"11월 6일",regOrder:78,pay:"6일",payDay:6,type:"even",status:"active",isCard:false,receipt:"010-8812-7281",note:"짝수 변경"},
+  {id:79,no:79,name:"홍지환",reg:"11월 24일",regOrder:79,pay:"24일",payDay:24,type:"odd",status:"active",isCard:false,receipt:"010-7313-3708",note:""},
+  {id:80,no:80,name:"안예진",reg:"11월 26일",regOrder:80,pay:"11일",payDay:11,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:81,no:81,name:"김경흔",reg:"12월 12일",regOrder:81,pay:"12일",payDay:12,type:"even",status:"active",isCard:true,receipt:"",note:"재가입"},
+  {id:82,no:82,name:"강채윤",reg:"12월 31일",regOrder:82,pay:"31일",payDay:31,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:83,no:83,name:"이서율",reg:"1월 1일",regOrder:83,pay:"1일",payDay:1,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:84,no:84,name:"김시윤",reg:"1월 1일",regOrder:84,pay:"1일",payDay:1,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:85,no:85,name:"이하정·이준",reg:"1월 6일",regOrder:85,pay:"6일",payDay:6,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:86,no:86,name:"이태린",reg:"1월 7일",regOrder:86,pay:"7일",payDay:7,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:87,no:87,name:"김민혁",reg:"1월 13일",regOrder:87,pay:"13일",payDay:13,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:88,no:88,name:"김나은·도윤",reg:"2월 5일",regOrder:88,pay:"5일",payDay:5,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:89,no:89,name:"유지호",reg:"2월 10일",regOrder:89,pay:"10일",payDay:10,type:"even",status:"active",isCard:true,receipt:"",note:""},
+  {id:90,no:90,name:"한태리",reg:"3월 4일",regOrder:90,pay:"4일",payDay:4,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+  {id:91,no:91,name:"이주하",reg:"3월 4일",regOrder:91,pay:"4일",payDay:4,type:"odd",status:"active",isCard:false,receipt:"010-3285-1492",note:""},
+  {id:92,no:92,name:"양서원·지원",reg:"3월 12일",regOrder:92,pay:"12일",payDay:12,type:"odd",status:"active",isCard:true,receipt:"",note:""},
+];
+
+const LS_DATA='gwacheon_data_v2',LS_SNAP='gwacheon_snap_v2',LS_SETTLE='gwacheon_settle_v1',LS_SCHED='gwacheon_sched_v1',LS_SCHED_COLOR='gwacheon_sched_color_v1';
+
+function loadData(){try{const s=localStorage.getItem(LS_DATA);if(s){const p=JSON.parse(s),dm={};DEFAULTS.forEach(d=>{dm[d.id]=d;});return p.map(d=>{const def=dm[d.id];const ht=d.tags&&d.tags.length>0;return{...d,tags:ht?d.tags:(def&&def.tags?def.tags:[])};});}}catch(e){}return DEFAULTS.map(d=>({...d,paid:false}));}
+function saveData(){try{localStorage.setItem(LS_DATA,JSON.stringify(data));const h=document.getElementById('saved-hint'),now=new Date();h.textContent=`자동 저장됨 · ${now.getHours()}:${String(now.getMinutes()).padStart(2,'0')}`;}catch(e){}}
+function loadSnaps(){try{const s=localStorage.getItem(LS_SNAP);if(s)return JSON.parse(s);}catch(e){}return[];}
+function saveSnaps(){try{localStorage.setItem(LS_SNAP,JSON.stringify(snapshots));}catch(e){}}
+function loadSettle(){try{const s=localStorage.getItem(LS_SETTLE);if(s)return JSON.parse(s);}catch(e){}return{odd:{},even:{}};}
+function saveSettle(){try{localStorage.setItem(LS_SETTLE,JSON.stringify(settleData));}catch(e){}}
+function loadSched(){try{const s=localStorage.getItem(LS_SCHED);if(s)return JSON.parse(s);}catch(e){}return SCHED_DEFAULTS.map(r=>({...r}));}
+function saveSched(){try{localStorage.setItem(LS_SCHED,JSON.stringify(schedData));}catch(e){}}
+function loadSchedColors(){try{const s=localStorage.getItem(LS_SCHED_COLOR);if(s)return JSON.parse(s);}catch(e){}return{tue:'#e8f0fb',wed:'#e8f5e9',thu:'#fffde7'};}
+function saveSchedColors(){try{localStorage.setItem(LS_SCHED_COLOR,JSON.stringify(schedColors));}catch(e){}}
+
+let data,snapshots,settleData,schedData,schedColors,filterStatus='all',editingRow=null,nextId=93,seqMap={};
+
+function initApp(){
+  data=loadData(); snapshots=loadSnaps(); settleData=loadSettle(); schedData=loadSched(); schedColors=loadSchedColors();
+  nextId=Math.max(...data.map(d=>d.id),92)+1;
+  const cm=`${new Date().getMonth()+1}월`;
+  ['odd','even'].forEach(t=>{const s=document.getElementById(t+'-settle-month');if(s){s.innerHTML=[...Array(12)].map((_,i)=>`<option value="${i+1}월">${i+1}월</option>`).join('');s.value=cm;}});
+  render();
+}
+
+const TAG_DEF=[
+  {key:'active',label:'재원',cls:'b-tag-active'},{key:'hold',label:'홀딩',cls:'b-tag-hold'},
+  {key:'out',label:'탈퇴',cls:'b-tag-out'},{key:'sibling',label:'형제',cls:'b-tag-sib'},
+  {key:'siblingMonthly',label:'매달형제',cls:'b-tag-sibm'},{key:'new',label:'신규',cls:'b-tag-new'},
+  {key:'newSibling',label:'신규형제',cls:'b-tag-newsib'},{key:'etc',label:'기타',cls:'b-tag-etc'},
+];
+const TAG_PRICE={newSibling:120000,sibling:120000,siblingMonthly:60000,new:80000,active:80000,hold:0,out:0,etc:0};
+const TAG_PRIORITY=['newSibling','sibling','siblingMonthly','new','hold','out','etc','active'];
+
+function rcCell(d){if(d.isCard)return`<span class="rc-dash">—</span>`;if(d.receipt)return`<span class="rc-num">${d.receipt}</span>`;return`<span class="rc-miss">미등록</span>`;}
+function typeBadge(d){if(d.type==='odd')return`<span class="badge b-odd">홀수</span>`;if(d.type==='even')return`<span class="badge b-even">짝수</span>`;return`<span class="badge b-both">매월</span>`;}
+function pmBadge(d){return d.isCard?`<span class="badge b-card">카드</span>`:`<span class="badge b-cash">현금</span>`;}
+function tagBadges(d){if(!d.tags||!d.tags.length)return'';return d.tags.map(k=>{const t=TAG_DEF.find(x=>x.key===k);return t?`<span class="badge ${t.cls}" style="margin-left:4px;font-size:10px">${t.label}</span>`:''}).join('');}
+function tagCheckboxes(d){return TAG_DEF.map(t=>`<label style="display:flex;align-items:center;gap:4px;font-size:12px;cursor:pointer;white-space:nowrap"><input type="checkbox" ${(d.tags||[]).includes(t.key)?'checked':''} onchange="toggleTag(${d.id},'${t.key}',this.checked)" style="accent-color:#3b6d11">${t.label}</label>`).join('');}
+function tagPriorityKey(tags){if(!tags||!tags.length)return'active';for(const k of TAG_PRIORITY){if(tags.includes(k))return k;}return'active';}
+function settleLabel(k){return{active:'기본',hold:'홀딩',out:'탈퇴',sibling:'형제',siblingMonthly:'매달 형제',new:'신규',newSibling:'신규 형제',etc:'무료'}[k]||'기본';}
+
+function setFilter(f,btn){filterStatus=f;document.querySelectorAll('.f-btn').forEach(b=>b.classList.remove('active'));btn.classList.add('active');render();}
+function switchTab(tab,btn){document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));document.querySelectorAll('.tab-pane').forEach(c=>c.classList.remove('active'));btn.classList.add('active');document.getElementById('tab-'+tab).classList.add('active');if(tab==='odd'){renderPayTab('odd');renderSettle('odd');}if(tab==='even'){renderPayTab('even');renderSettle('even');}if(tab==='snap')renderSnapshots();if(tab==='schedule')renderSchedule();}
+
+function getFiltered(){const q=document.getElementById('search').value.trim().toLowerCase();return data.filter(d=>{if(filterStatus==='active'&&d.status==='out')return false;if(filterStatus==='odd'&&d.type!=='odd')return false;if(filterStatus==='even'&&d.type!=='even')return false;if(filterStatus==='hold'&&d.status!=='hold')return false;if(filterStatus==='out'&&d.status!=='out')return false;if(q&&!d.name.toLowerCase().includes(q)&&!d.receipt.includes(q)&&!d.note.toLowerCase().includes(q))return false;return true;}).sort((a,b)=>a.regOrder-b.regOrder);}
+
+function render(){seqMap={};data.filter(d=>d.status!=='out').sort((a,b)=>a.regOrder-b.regOrder).forEach((d,i)=>{seqMap[d.id]=i+1;});const rows=getFiltered();const tbody=document.getElementById('tbody');document.getElementById('no-result').style.display=rows.length?'none':'block';if(!rows.length){tbody.innerHTML='';updateStats();return;}const show=filterStatus==='all';const ar=rows.filter(d=>d.status!=='out');const or=rows.filter(d=>d.status==='out');let html='';if(show&&ar.length){html+=`<tr class="section-row"><td colspan="10">재원 · 홀딩 (${ar.length}명)</td></tr>`;html+=ar.map(d=>rowHtml(d)).join('');if(or.length){html+=`<tr class="section-row"><td colspan="10">탈퇴 (${or.length}명)</td></tr>`;html+=or.map(d=>rowHtml(d)).join('');}}else{html=rows.map(d=>rowHtml(d)).join('');}tbody.innerHTML=html;updateStats();}
+
+function rowHtml(d){const isEdit=editingRow===`r${d.id}`;const rowCls=d.status==='out'?' class="out-row"':(!isEdit&&d.paid)?' class="paid-row"':'';if(isEdit)return`<tr style="background:#f8f8f0"><td style="color:#aaa;font-size:12px;vertical-align:top;padding-top:12px">${seqMap[d.id]||'탈퇴'}</td><td><input class="ei" id="e-name" value="${d.name}" style="width:110px;margin-bottom:6px"><br><div style="display:flex;flex-wrap:wrap;gap:5px">${tagCheckboxes(d)}</div></td><td><input class="ei" id="e-reg" value="${d.reg}" style="width:68px"></td><td><input class="ei" id="e-pay" value="${d.pay}" style="width:48px"></td><td><select class="ei" id="e-type" style="width:66px"><option value="odd" ${d.type==='odd'?'selected':''}>홀수</option><option value="even" ${d.type==='even'?'selected':''}>짝수</option><option value="both" ${d.type==='both'?'selected':''}>매월</option></select></td><td><select class="ei" id="e-card" style="width:66px"><option value="0" ${!d.isCard?'selected':''}>현금</option><option value="1" ${d.isCard?'selected':''}>카드</option></select></td><td><input class="ei" id="e-receipt" value="${d.receipt}" placeholder="번호" style="width:136px"></td><td><input class="ei" id="e-note" value="${d.note}" style="width:110px"></td><td></td><td><button class="ab save" onclick="saveEdit(${d.id})">저장</button><button class="ab" onclick="cancelEdit()">취소</button><button class="ab del" onclick="deleteMember(${d.id})">삭제</button></td></tr>`;
+return`<tr${rowCls}><td style="color:#aaa;font-size:12px">${seqMap[d.id]||'탈퇴'}</td><td style="font-weight:500">${d.name}<br><span style="font-weight:400">${tagBadges(d)}</span></td><td style="color:#aaa;font-size:12px">${d.reg}</td><td style="font-weight:500">${d.pay}</td><td>${typeBadge(d)}</td><td>${pmBadge(d)}</td><td>${rcCell(d)}</td><td class="note-cell" title="${d.note}">${d.note}</td><td style="text-align:center">${d.status!=='out'?`<input type="checkbox" class="chk" ${d.paid?'checked':''} onchange="togglePaid(${d.id},this.checked)">`:''}</td><td><button class="ab" onclick="startEdit(${d.id})">수정</button></td></tr>`;}
+
+function togglePaid(id,val){const gi=data.findIndex(d=>d.id===id);if(gi>=0){data[gi].paid=val;saveData();render();syncPayTabs();}}
+function startEdit(id){editingRow=`r${id}`;render();}
+function cancelEdit(){editingRow=null;render();}
+function saveEdit(id){const gi=data.findIndex(d=>d.id===id);if(gi<0)return;const ps=document.getElementById('e-pay').value.trim();const ct=data[gi].tags||[];const io=ct.includes('out');const ih=ct.includes('hold');data[gi]={...data[gi],name:document.getElementById('e-name').value.trim(),reg:document.getElementById('e-reg').value.trim(),pay:ps,payDay:parseInt(ps)||0,type:document.getElementById('e-type').value,isCard:document.getElementById('e-card').value==='1',receipt:document.getElementById('e-receipt').value.trim(),note:document.getElementById('e-note').value.trim(),tags:ct,status:io?'out':ih?'hold':'active'};editingRow=null;saveData();render();syncPayTabs();}
+function deleteMember(id){if(!confirm('정말 삭제하시겠습니까?'))return;data=data.filter(d=>d.id!==id);editingRow=null;saveData();render();syncPayTabs();}
+function openModal(){document.getElementById('modal-bg').classList.add('open');}
+function closeModal(){document.getElementById('modal-bg').classList.remove('open');['m-name','m-reg','m-pay','m-receipt','m-note'].forEach(id=>document.getElementById(id).value='');}
+function bgClose(e){if(e.target===document.getElementById('modal-bg'))closeModal();}
+function addMember(){const name=document.getElementById('m-name').value.trim();if(!name){alert('이름을 입력하세요');return;}const ps=document.getElementById('m-pay').value.trim();const mr=Math.max(...data.map(d=>d.regOrder),0);data.push({id:nextId++,no:Math.max(...data.filter(d=>d.status!=='out'&&typeof d.no==='number').map(d=>d.no),0)+1,name,reg:document.getElementById('m-reg').value.trim(),regOrder:mr+1,pay:ps,payDay:parseInt(ps)||0,type:document.getElementById('m-type').value,status:'active',isCard:document.getElementById('m-card').value==='1',receipt:document.getElementById('m-receipt').value.trim(),note:document.getElementById('m-note').value.trim(),paid:false});closeModal();saveData();render();syncPayTabs();}
+function toggleTag(id,key,val){const gi=data.findIndex(d=>d.id===id);if(gi<0)return;if(!data[gi].tags)data[gi].tags=[];if(val){if(!data[gi].tags.includes(key))data[gi].tags.push(key);}else{data[gi].tags=data[gi].tags.filter(k=>k!==key);}if(key==='out'||key==='hold'){const tags=data[gi].tags;data[gi].status=tags.includes('out')?'out':tags.includes('hold')?'hold':'active';saveData();render();}}
+
+function renderPayTab(type){const ms=data.filter(d=>d.status!=='out'&&(d.type===type||d.type==='both')).sort((a,b)=>a.payDay-b.payDay);const dc=type==='odd'?'d-odd':'d-even';document.getElementById(type+'-tbody').innerHTML=ms.map((d,i)=>`<tr${d.paid?' class="paid-pay"':''}><td style="color:#aaa;font-size:12px;white-space:nowrap">${i+1}${tagBadges(d)}</td><td><span class="day-b ${dc}">${d.pay}</span></td><td style="font-weight:500">${d.name}</td><td>${pmBadge(d)}</td><td>${rcCell(d)}</td><td style="font-size:12px;color:#888">${d.note}</td><td style="text-align:center"><input type="checkbox" class="chk" ${d.paid?'checked':''} onchange="togglePayTabPaid(${d.id},'${type}',this.checked)"></td></tr>`).join('');}
+function togglePayTabPaid(id,type,val){const gi=data.findIndex(d=>d.id===id);if(gi>=0){data[gi].paid=val;saveData();renderPayTab(type);render();}}
+function resetPay(type){if(!confirm(`${type==='odd'?'홀수':'짝수'} 회원의 이번 달 결제 체크를 모두 초기화할까요?`))return;data.forEach(d=>{if(d.type===type||d.type==='both')d.paid=false;});saveData();renderPayTab(type);render();}
+function syncPayTabs(){const a=document.querySelector('.tab-btn.active');if(!a)return;const t=a.textContent.trim();if(t.includes('홀수'))renderPayTab('odd');if(t.includes('짝수'))renderPayTab('even');}
+
+function updateStats(){const a=data.filter(d=>d.status==='active'),h=data.filter(d=>d.status==='hold'),o=data.filter(d=>d.status==='out'),od=data.filter(d=>d.status!=='out'&&d.type==='odd'),ev=data.filter(d=>d.status!=='out'&&(d.type==='even'||d.type==='both'));document.getElementById('stats').innerHTML=`<div class="stat"><div class="stat-label">전체 재원 (재원+홀딩)</div><div class="stat-num">${a.length+h.length}명 <span style="font-size:13px;font-weight:400;color:#aaa">재원 ${a.length} · 홀딩 ${h.length}</span></div></div><div class="stat"><div class="stat-label">홀수 납부</div><div class="stat-num">${od.length}명</div></div><div class="stat"><div class="stat-label">짝수 납부</div><div class="stat-num">${ev.length}명</div></div><div class="stat"><div class="stat-label">탈퇴</div><div class="stat-num">${o.length}명</div></div>`;}
+
+function getSettleMonth(type){const s=document.getElementById(type+'-settle-month');return s?s.value:`${new Date().getMonth()+1}월`;}
+function renderSettle(type){if(!settleData[type])settleData[type]={};const month=getSettleMonth(type);if(!settleData[type][month])settleData[type][month]=[];const rows=settleData[type][month];const GD=[{key:'hold',label:'홀딩',bg:'#fce8d0',color:'#8a5000',price:0},{key:'active',label:'기본',bg:'',color:'',price:80000},{key:'etc',label:'무료',bg:'',color:'',price:0},{key:'sibling',label:'형제',bg:'#ffd966',color:'#7a4f00',price:120000},{key:'siblingMonthly',label:'매달 형제',bg:'#ffd966',color:'#7a4f00',price:60000},{key:'new',label:'신규',bg:'#ead1dc',color:'#7a1040',price:80000},{key:'newSibling',label:'신규 형제',bg:'#ead1dc',color:'#7a1040',price:120000}];const gc={};GD.forEach(g=>{gc[g.key]=0;});let oc=0,tg=0;data.filter(d=>d.type===type||d.type==='both').forEach(d=>{if(d.status==='out'){oc++;return;}const tk=tagPriorityKey(d.tags);if(gc[tk]!==undefined)gc[tk]++;else gc['active']++;const g=GD.find(x=>x.key===tk);tg+=g?g.price:80000;});const tc=Object.values(gc).reduce((a,b)=>a+b,0),tax=Math.round(tg*.033),net=tg-tax;const gr=GD.map(g=>{const cnt=gc[g.key]||0,sub=cnt*g.price;return`<tr><td style="background:${g.bg||'#fff'};color:${g.color||'#1a1a1a'};font-weight:${g.bg?'500':'400'};padding:6px 12px;border-bottom:0.5px solid #f0f0e8">${g.label}</td><td style="text-align:right;padding:6px 12px;font-family:monospace;border-bottom:0.5px solid #f0f0e8">${cnt}</td><td style="text-align:right;padding:6px 12px;font-family:monospace;border-bottom:0.5px solid #f0f0e8">${g.price.toLocaleString()}</td><td style="text-align:right;padding:6px 12px;font-family:monospace;font-weight:500;border-bottom:0.5px solid #f0f0e8">${sub?sub.toLocaleString():''}</td></tr>`;}).join('');document.getElementById(type+'-settle-summary').innerHTML=`<div style="display:flex;gap:1.5rem;flex-wrap:wrap;width:100%"><div class="tbl-wrap" style="flex:0 0 auto;min-width:300px"><table style="width:100%;border-collapse:collapse;font-size:13px"><thead><tr style="background:#f5f5f0"><th style="padding:7px 12px;text-align:left;font-size:12px;color:#888;font-weight:500;width:110px">구분</th><th style="padding:7px 12px;text-align:right;font-size:12px;color:#888;font-weight:500">인원</th><th style="padding:7px 12px;text-align:right;font-size:12px;color:#888;font-weight:500">단가</th><th style="padding:7px 12px;text-align:right;font-size:12px;color:#888;font-weight:500">소계</th></tr></thead><tbody>${gr}<tr><td style="padding:6px 12px;color:#aaa;font-size:12px;border-bottom:0.5px solid #f0f0e8">탈퇴</td><td style="text-align:right;padding:6px 12px;font-family:monospace;color:#aaa;border-bottom:0.5px solid #f0f0e8">${oc}</td><td colspan="2" style="border-bottom:0.5px solid #f0f0e8"></td></tr></tbody><tfoot><tr style="background:#f5f5f0;font-weight:500"><td style="padding:8px 12px">합계</td><td style="text-align:right;padding:8px 12px;font-family:monospace">${tc}</td><td style="text-align:right;padding:8px 12px;font-size:12px;color:#888;font-family:monospace">${tg.toLocaleString()}</td><td></td></tr><tr style="background:#f8f8f0"><td colspan="2" style="padding:7px 12px;font-size:12px;color:#888">세금 3.3%</td><td style="text-align:right;padding:7px 12px;font-family:monospace;color:#c0392b">-${tax.toLocaleString()}</td><td></td></tr><tr style="background:#e8f5e8"><td colspan="2" style="padding:8px 12px;font-size:13px;font-weight:500;color:#1e7a2e">실수령액</td><td colspan="2" style="text-align:right;padding:8px 12px;font-family:monospace;font-weight:600;color:#1e7a2e;font-size:15px">${net.toLocaleString()}</td></tr></tfoot></table></div><div style="display:flex;flex-direction:column;gap:8px;justify-content:center"><div class="stat" style="min-width:120px"><div class="stat-label">입금 완료</div><div class="stat-num" style="font-size:16px">${rows.filter(r=>r.paid).reduce((a,r)=>a+(Number(r.amount)||0),0).toLocaleString()}원</div></div><div class="stat" style="min-width:120px"><div class="stat-label">미입금</div><div class="stat-num" style="font-size:16px;color:#e07a30">${rows.filter(r=>!r.paid).reduce((a,r)=>a+(Number(r.amount)||0),0).toLocaleString()}원</div></div></div></div>`;
+document.getElementById(type+'-settle-tbody').innerHTML=rows.length?rows.map((r,i)=>{const rs=r.paid?'style="opacity:.4"':'';const tc2=r.tagKey?(TAG_DEF.find(x=>x.key===r.tagKey)||{cls:'b-tag-active'}).cls:'b-tag-active';return`<tr ${rs}><td style="font-size:12px;color:#aaa">${r.month||month}</td><td style="font-weight:500">${r.name}</td><td><span class="badge ${tc2}">${settleLabel(r.tagKey||'active')}</span></td><td style="text-align:right;font-family:monospace;font-weight:500">${(Number(r.amount)||0).toLocaleString()}원</td><td><select class="ei" style="width:72px;font-size:12px" onchange="settleSave('${type}','${month}',${i},'method',this)"><option value="현금" ${(r.method||'현금')==='현금'?'selected':''}>현금</option><option value="카드" ${r.method==='카드'?'selected':''}>카드</option><option value="이체" ${r.method==='이체'?'selected':''}>이체</option></select></td><td><div class="sched-cell" contenteditable="true" onblur="settleSave('${type}','${month}',${i},'date',this)">${r.date||''}</div></td><td><div class="sched-cell" contenteditable="true" onblur="settleSave('${type}','${month}',${i},'memo',this)">${r.memo||''}</div></td><td style="text-align:center"><input type="checkbox" class="chk" ${r.paid?'checked':''} onchange="settleTogglePaid('${type}','${month}',${i},this.checked)"></td><td style="text-align:center"><button class="ab del" style="width:auto;padding:2px 6px;margin:0;display:inline-block" onclick="settleDelete('${type}','${month}',${i})">✕</button></td></tr>`;}).join(''):`<tr><td colspan="9" style="text-align:center;color:#aaa;padding:1.5rem;font-size:13px">자동 채우기 또는 수동 추가로 정산 내역을 입력하세요</td></tr>`;
+let rt=0;rows.forEach(r=>{rt+=Number(r.amount)||0;});const rtx=Math.round(rt*.033),rn=rt-rtx;document.getElementById(type+'-settle-tfoot').innerHTML=rows.length?`<tr style="background:#f5f5f0;font-weight:500"><td colspan="3" style="padding:10px 14px">합계 (${rows.length}명)</td><td style="text-align:right;font-family:monospace;padding:10px 14px">${rt.toLocaleString()}원</td><td colspan="3" style="padding:10px 14px;font-size:12px;color:#888">세금 3.3% = -${rtx.toLocaleString()}원</td><td colspan="2" style="padding:10px 14px;color:#1e7a2e;font-family:monospace;font-weight:600">실수령 ${rn.toLocaleString()}원</td></tr>`:'';}
+function settleSave(type,month,i,key,el){settleData[type][month][i][key]=el.tagName==='SELECT'?el.value:el.innerText.trim();saveSettle();renderSettle(type);}
+function settleTogglePaid(type,month,i,val){settleData[type][month][i].paid=val;saveSettle();renderSettle(type);}
+function settleDelete(type,month,i){if(!confirm('이 항목을 삭제할까요?'))return;settleData[type][month].splice(i,1);saveSettle();renderSettle(type);}
+function addSettleRow(type){const m=getSettleMonth(type);if(!settleData[type])settleData[type]={};if(!settleData[type][m])settleData[type][m]=[];settleData[type][m].push({month:m,name:'',tagKey:'active',amount:80000,method:'현금',date:'',memo:'',paid:false});saveSettle();renderSettle(type);}
+function autoFillSettle(type){const m=getSettleMonth(type);if(!settleData[type])settleData[type]={};if(settleData[type][m]&&settleData[type][m].length>0){if(!confirm(`${m} 정산표에 이미 데이터가 있습니다. 덮어쓸까요?`))return;}const ms=data.filter(d=>d.status!=='out'&&(d.type===type||d.type==='both')).sort((a,b)=>a.payDay-b.payDay);settleData[type][m]=ms.map(d=>{const tk=tagPriorityKey(d.tags);return{month:m,name:d.name,tagKey:tk,amount:TAG_PRICE[tk]!==undefined?TAG_PRICE[tk]:80000,method:d.isCard?'카드':'현금',date:'',memo:'',paid:false};});saveSettle();renderSettle(type);}
+
+function saveSnapshot(){const now=new Date(),label=`${now.getFullYear()}년 ${now.getMonth()+1}월`;if(snapshots.find(s=>s.label===label)){if(!confirm(`${label} 기록이 이미 있습니다. 덮어쓸까요?`))return;snapshots=snapshots.filter(s=>s.label!==label);}const ms=data.filter(d=>d.status!=='out').map(d=>({...d}));snapshots.unshift({label,date:now.toLocaleDateString('ko-KR'),members:ms});saveSnaps();renderSnapshots();alert(`${label} 저장 완료 (재원+홀딩 ${ms.length}명)`);}
+function deleteSnapshot(i){if(!confirm('이 기록을 삭제할까요?'))return;snapshots.splice(i,1);saveSnaps();renderSnapshots();}
+function toggleSnap(i){document.getElementById('snap-body-'+i).classList.toggle('open');}
+function renderSnapshots(){const el=document.getElementById('snap-list');if(!snapshots.length){el.innerHTML='<div class="empty-snap">저장된 월별 기록이 없습니다.<br>매월 말 "이번 달 저장" 버튼으로 기록해두세요.</div>';return;}el.innerHTML=snapshots.map((s,si)=>{const od=s.members.filter(d=>d.type==='odd').sort((a,b)=>a.payDay-b.payDay),ev=s.members.filter(d=>d.type==='even'||d.type==='both').sort((a,b)=>a.payDay-b.payDay);const mr=arr=>arr.map(d=>`<tr><td>${d.name}${d.status==='hold'?' <span class="badge b-hold" style="font-size:10px">홀딩</span>':''}</td><td>${d.pay}</td><td>${d.isCard?'카드':'현금'}</td><td>${d.receipt||'—'}</td><td>${d.note}</td></tr>`).join('');return`<div class="snap-card"><div class="snap-card-head" onclick="toggleSnap(${si})"><div><span class="snap-title">${s.label}</span><span class="snap-meta" style="margin-left:10px">총 ${s.members.length}명 (홀수 ${od.length} · 짝수 ${ev.length})</span></div><div style="display:flex;align-items:center;gap:8px"><span class="snap-meta">${s.date} 저장</span><button class="snap-del" onclick="event.stopPropagation();deleteSnapshot(${si})">삭제</button></div></div><div class="snap-body" id="snap-body-${si}"><div class="snap-sec">홀수 납부 (${od.length}명)</div><table class="snap-tbl"><thead><tr><th>이름</th><th>결제일</th><th>결제방법</th><th>현금영수증</th><th>특이사항</th></tr></thead><tbody>${mr(od)}</tbody></table><div class="snap-sec" style="margin-top:16px">짝수 납부 (${ev.length}명)</div><table class="snap-tbl"><thead><tr><th>이름</th><th>결제일</th><th>결제방법</th><th>현금영수증</th><th>특이사항</th></tr></thead><tbody>${mr(ev)}</tbody></table></div></div>`;}).join('');}
+
+const SCHED_DEFAULTS=[
+  {time:"9:20~9:30",tue:"이시은",wed:"",thu:"정지아"},
+  {time:"9:30~9:40",tue:"이지안",wed:"김소은",thu:"양서원·지원"},
+  {time:"9:40~9:50",tue:"",wed:"김서율",thu:"김시윤·김민혁"},
+  {time:"9:50~10:00",tue:"",wed:"",thu:"이주하"},
+  {time:"10:00~10:10",tue:"박정진·정연",wed:"이준석",thu:"이재원"},
+  {time:"10:10~10:20",tue:"김범주",wed:"손필원",thu:"류진"},
+  {time:"10:20~10:30",tue:"",wed:"최서준",thu:"안예진"},
+  {time:"10:30~10:40",tue:"김윤후",wed:"정재인·도윤",thu:"강수진"},
+  {time:"10:40~10:50",tue:"",wed:"",thu:"김가언·서아"},
+  {time:"10:50~11:00",tue:"조서윤",wed:"김진영",thu:"김시윤"},
+  {time:"11:00~11:10",tue:"최명준",wed:"김현서",thu:"심서윤(2주)"},
+  {time:"11:10~11:20",tue:"문채은",wed:"박하이",thu:"신연서"},
+  {time:"11:20~11:30",tue:"양지안",wed:"김윤주",thu:""},
+  {time:"11:30~11:40",tue:"송채은",wed:"박서진",thu:""},
+  {time:"11:40~11:50",tue:"강솔인",wed:"서연우",thu:"김시흔·수아"},
+  {time:"11:50~12:00",tue:"박동우·동규",wed:"홍지환",thu:""},
+  {time:"12:00~12:10",tue:"김민혁",wed:"유다은",thu:"구다인"},
+  {time:"12:10~12:20",tue:"민지후",wed:"김정한 NEW",thu:"김은서"},
+  {time:"12:20~12:30",tue:"한태리",wed:"조여름",thu:"유지완"},
+  {time:"12:30~12:40",tue:"윤승아",wed:"유승주",thu:"이지성"},
+  {time:"12:40~12:50",tue:"이다은",wed:"김규아",thu:"이솔후"},
+  {time:"12:50~13:00",tue:"이연준·하준",wed:"이재원",thu:"안지윤"},
+  {time:"13:00~13:15",tue:"",wed:"",thu:"김윤주"},
+  {time:"14:00~14:10",tue:"",wed:"이시현",thu:""},
+  {time:"14:15~14:30",tue:"",wed:"박시우",thu:""},
+  {time:"14:30~14:45",tue:"",wed:"김연서",thu:""},
+  {time:"14:45~15:00",tue:"",wed:"고은수",thu:"김소은"},
+  {time:"15:00~15:15",tue:"",wed:"허지윤",thu:""},
+  {time:"15:30~15:45",tue:"",wed:"엄세원",thu:"박하이"},
+  {time:"16:00~16:15",tue:"",wed:"김보민",thu:""},
+  {time:"16:15~16:30",tue:"",wed:"이강진",thu:""},
+  {time:"16:30~16:40",tue:"",wed:"홍채원·하정연",thu:""},
+  {time:"16:40~16:50",tue:"",wed:"김준희",thu:""},
+  {time:"16:50~17:00",tue:"",wed:"이서율",thu:""},
+  {time:"17:00~17:10",tue:"",wed:"강채윤",thu:""},
+  {time:"17:10~17:20",tue:"",wed:"이수현",thu:""},
+  {time:"17:20~17:30",tue:"",wed:"신승윤",thu:""},
+  {time:"17:30~17:40",tue:"",wed:"오수아·유지호",thu:""},
+  {time:"17:40~17:50",tue:"",wed:"이준혁·이태린",thu:""},
+  {time:"17:50~18:00",tue:"",wed:"경하율·오예은",thu:""},
+  {time:"18:00~18:10",tue:"",wed:"김가율",thu:""},
+  {time:"18:30~18:40",tue:"",wed:"전아영",thu:""},
+  {time:"18:40~18:50",tue:"",wed:"김재이",thu:""},
+  {time:"18:50~19:00",tue:"",wed:"하동주",thu:""},
+  {time:"19:00~19:10",tue:"",wed:"김나윤",thu:""},
+  {time:"19:10~19:20",tue:"",wed:"최서령",thu:""},
+  {time:"19:20~19:30",tue:"",wed:"윤준호",thu:""},
+  {time:"19:30~19:40",tue:"",wed:"박예강",thu:""},
+];
+
+function schedColorChange(col,val){schedColors[col]=val;saveSchedColors();renderSchedule();}
+function renderSchedule(){['tue','wed','thu'].forEach(c=>{const e=document.getElementById('color-'+c);if(e)e.value=schedColors[c];});document.getElementById('sched-tbody').innerHTML=schedData.map((row,i)=>`<tr><td style="background:#f5f5f0;font-size:12px;color:#888;white-space:nowrap"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'time',this)">${row.time}</div></td><td style="background:${schedColors.tue}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'tue',this)">${row.tue}</div></td><td style="background:${schedColors.wed}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'wed',this)">${row.wed}</div></td><td style="background:${schedColors.thu}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'thu',this)">${row.thu}</div></td><td style="text-align:center"><button class="ab del" style="width:auto;padding:3px 8px;display:inline-block" onclick="deleteSchedRow(${i})">✕</button></td></tr>`).join('');}
+function schedSave(i,col,el){schedData[i][col]=el.innerText.trim();saveSched();}
+function addScheduleRow(){schedData.push({time:'',tue:'',wed:'',thu:''});saveSched();renderSchedule();const rows=document.getElementById('sched-tbody').rows;if(rows.length)rows[rows.length-1].scrollIntoView({behavior:'smooth',block:'center'});}
+function deleteSchedRow(i){if(!confirm('이 행을 삭제할까요?'))return;schedData.splice(i,1);saveSched();renderSchedule();}
+
+function togglePrintMenu(){
+  const m=document.getElementById('print-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(e){
+  const wrap=document.getElementById('print-wrap');
+  if(wrap&&!wrap.contains(e.target)){document.getElementById('print-menu').style.display='none';}
+});
+function printList(filter){
+  document.getElementById('print-menu').style.display='none';
+  const base=data.filter(d=>d.status!=='out');
+  let members, title, subtitle;
+  const now=new Date();
+  const dateStr=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  if(filter==='odd'){
+    members=base.filter(d=>d.type==='odd'||d.type==='both');
+    title='과천 홀수 납부 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (홀수·홀+짝, 탈퇴 제외)`;
+  } else if(filter==='even'){
+    members=base.filter(d=>d.type==='even'||d.type==='both');
+    title='과천 짝수 납부 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (짝수·홀+짝, 탈퇴 제외)`;
+  } else {
+    members=base;
+    title='과천 회원 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (탈퇴 제외, 홀딩 포함)`;
+  }
+  const tl=t=>t==='odd'?'홀':t==='even'?'짝':t==='both'?'홀+짝':'-';
+  const rows=members.map((m,i)=>{
+    const bg=m.status==='hold'?'background:#fffbe6':'';
+    return `<tr style="${bg}">
+      <td>${i+1}</td>
+      <td>${m.name}</td>
+      <td>${m.reg}</td>
+      <td>${tl(m.type)}</td>
+      <td>${m.pay}</td>
+      <td>${m.isCard?'카드':'현금'}</td>
+      <td>${m.status==='hold'?'홀딩':''}</td>
+      <td style="color:#888;font-size:11px">${m.note||''}</td>
+    </tr>`;
+  }).join('');
+  const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
+<title>${title} ${dateStr}</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;padding:20px;color:#111}
+h1{font-size:16px;font-weight:700;margin-bottom:4px}
+.sub{font-size:12px;color:#888;margin-bottom:14px}
+table{width:100%;border-collapse:collapse}
+th{font-size:11px;font-weight:600;background:#f5f5f0;padding:6px 8px;border:0.5px solid #ccc;text-align:left}
+td{padding:5px 8px;border:0.5px solid #ddd;vertical-align:middle}
+tr:nth-child(even){background:#fafafa}
+@media print{@page{size:A4;margin:15mm}button{display:none}}
+</style></head><body>
+<h1>${title}</h1>
+<div class="sub">${subtitle}</div>
+<table>
+<thead><tr><th>#</th><th>이름</th><th>등록일</th><th>구분</th><th>납부일</th><th>결제</th><th>상태</th><th>비고</th></tr></thead>
+<tbody>${rows}</tbody>
+</table>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+  const w=window.open('','_blank');
+  w.document.write(html);
+  w.document.close();
+}
+function exportData(){
+  const obj={data,settleData,schedData,schedColors,snapshots,exportDate:new Date().toISOString()};
+  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  const d=new Date();
+  a.download=`gwacheon-${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+function importData(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const obj=JSON.parse(e.target.result);
+      if(obj.data)localStorage.setItem(LS_DATA,JSON.stringify(obj.data));
+      if(obj.settleData)localStorage.setItem(LS_SETTLE,JSON.stringify(obj.settleData));
+      if(obj.schedData)localStorage.setItem(LS_SCHED,JSON.stringify(obj.schedData));
+      if(obj.schedColors)localStorage.setItem(LS_SCHED_COLOR,JSON.stringify(obj.schedColors));
+      if(obj.snapshots)localStorage.setItem(LS_SNAP,JSON.stringify(obj.snapshots));
+      alert('가져오기 완료! 페이지를 새로고침합니다.');
+      location.reload();
+    }catch(err){alert('파일 형식이 올바르지 않습니다.');}
+  };
+  reader.readAsText(file);
+  input.value='';
+}
+
+checkAuth();
+</script>
+</body>
+</html>
