@@ -192,7 +192,7 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
     <button onclick="exportData()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📤 내보내기</button>
     <label style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📥 가져오기<input type="file" accept=".json,application/json,text/plain,*/*" style="display:none" onchange="importData(this)"></label>
     <div style="position:relative;display:inline-block" id="print-wrap">
-      <button onclick="togglePrintMenu()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">🖨️ 인쇄/PDF ▾</button>
+      <button onclick="togglePrintMenu(event)" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">🖨️ 인쇄/PDF ▾</button>
       <div id="print-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #ccc;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:100;min-width:130px;overflow:hidden">
         <div onclick="printList('all')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#333" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">📋 전체 명단</div>
         <div onclick="printList('odd')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#185fa5;border-top:0.5px solid #f0f0e8" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">🔵 홀수 납부</div>
@@ -237,7 +237,10 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
   <div id="tab-odd" class="tab-pane">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
       <p style="font-size:13px;color:#888">홀수 날짜 납부 · 결제일 오름차순</p>
-      <button class="reset-btn" onclick="resetPay('odd')">이번 달 체크 초기화</button>
+      <div style="display:flex;gap:8px">
+        <button class="reset-btn" onclick="printList('odd')">🖨️ 홀수 명단 인쇄</button>
+        <button class="reset-btn" onclick="resetPay('odd')">이번 달 체크 초기화</button>
+      </div>
     </div>
     <div class="pay-tbl-wrap">
       <table class="pt">
@@ -277,7 +280,10 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
   <div id="tab-even" class="tab-pane">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
       <p style="font-size:13px;color:#888">짝수 날짜 납부 · 결제일 오름차순</p>
-      <button class="reset-btn" onclick="resetPay('even')">이번 달 체크 초기화</button>
+      <div style="display:flex;gap:8px">
+        <button class="reset-btn" onclick="printList('even')">🖨️ 짝수 명단 인쇄</button>
+        <button class="reset-btn" onclick="resetPay('even')">이번 달 체크 초기화</button>
+      </div>
     </div>
     <div class="pay-tbl-wrap">
       <table class="pt">
@@ -638,13 +644,14 @@ function schedSave(i,col,el){schedData[i][col]=el.innerText.trim();saveSched();}
 function addScheduleRow(){schedData.push({time:'',tue:'',wed:'',thu:''});saveSched();renderSchedule();const rows=document.getElementById('sched-tbody').rows;if(rows.length)rows[rows.length-1].scrollIntoView({behavior:'smooth',block:'center'});}
 function deleteSchedRow(i){if(!confirm('이 행을 삭제할까요?'))return;schedData.splice(i,1);saveSched();renderSchedule();}
 
-function togglePrintMenu(){
+function togglePrintMenu(e){
+  e.stopPropagation();
   const m=document.getElementById('print-menu');
   m.style.display=m.style.display==='none'?'block':'none';
 }
-document.addEventListener('click',function(e){
-  const wrap=document.getElementById('print-wrap');
-  if(wrap&&!wrap.contains(e.target)){document.getElementById('print-menu').style.display='none';}
+document.addEventListener('click',function(){
+  const m=document.getElementById('print-menu');
+  if(m)m.style.display='none';
 });
 function printList(filter){
   document.getElementById('print-menu').style.display='none';
