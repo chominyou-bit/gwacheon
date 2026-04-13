@@ -567,12 +567,13 @@ function printList(filter){
   let members,title,subtitle;
   const now=new Date();
   const dateStr=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  const isPayFilter=filter==='odd'||filter==='even';
   if(filter==='odd'){
-    members=base.filter(d=>d.type==='odd'||d.type==='both');
+    members=base.filter(d=>d.type==='odd'||d.type==='both').sort((a,b)=>a.payDay-b.payDay);
     title='과천 홀수 납부 명단';
     subtitle=`${dateStr} 기준 · 총 ${members.length}명 (홀수·홀+짝, 탈퇴 제외)`;
   } else if(filter==='even'){
-    members=base.filter(d=>d.type==='even'||d.type==='both');
+    members=base.filter(d=>d.type==='even'||d.type==='both').sort((a,b)=>a.payDay-b.payDay);
     title='과천 짝수 납부 명단';
     subtitle=`${dateStr} 기준 · 총 ${members.length}명 (짝수·홀+짝, 탈퇴 제외)`;
   } else {
@@ -581,19 +582,37 @@ function printList(filter){
     subtitle=`${dateStr} 기준 · 총 ${members.length}명 (탈퇴 제외, 홀딩 포함)`;
   }
   const tl=t=>t==='odd'?'홀':t==='even'?'짝':t==='both'?'홀+짝':'-';
-  const rows=members.map((m,i)=>{
-    const bg=m.status==='hold'?'background:#fffbe6':'';
-    return `<tr style="${bg}">
-      <td>${i+1}</td>
-      <td>${m.name}</td>
-      <td>${m.reg}</td>
-      <td>${tl(m.type)}</td>
-      <td>${m.pay}</td>
-      <td>${m.isCard?'카드':'현금'}</td>
-      <td>${m.status==='hold'?'홀딩':''}</td>
-      <td style="color:#888;font-size:11px">${m.note||''}</td>
-    </tr>`;
-  }).join('');
+  let thead, rows;
+  if(isPayFilter){
+    thead=`<tr><th>#</th><th>결제일</th><th>이름</th><th>결제방법</th><th>현금영수증 번호</th><th>특이사항</th><th>상태</th></tr>`;
+    rows=members.map((m,i)=>{
+      const bg=m.status==='hold'?'background:#fffbe6':'';
+      return `<tr style="${bg}">
+        <td>${i+1}</td>
+        <td style="font-weight:600">${m.pay}</td>
+        <td style="font-weight:500">${m.name}</td>
+        <td>${m.isCard?'카드':'현금'}</td>
+        <td style="font-size:11px;color:#555">${m.receipt||''}</td>
+        <td style="font-size:11px;color:#888">${m.note||''}</td>
+        <td>${m.status==='hold'?'홀딩':''}</td>
+      </tr>`;
+    }).join('');
+  } else {
+    thead=`<tr><th>#</th><th>이름</th><th>등록일</th><th>구분</th><th>납부일</th><th>결제</th><th>상태</th><th>비고</th></tr>`;
+    rows=members.map((m,i)=>{
+      const bg=m.status==='hold'?'background:#fffbe6':'';
+      return `<tr style="${bg}">
+        <td>${i+1}</td>
+        <td>${m.name}</td>
+        <td>${m.reg}</td>
+        <td>${tl(m.type)}</td>
+        <td>${m.pay}</td>
+        <td>${m.isCard?'카드':'현금'}</td>
+        <td>${m.status==='hold'?'홀딩':''}</td>
+        <td style="color:#888;font-size:11px">${m.note||''}</td>
+      </tr>`;
+    }).join('');
+  }
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
 <title>${title} ${dateStr}</title>
 <style>
@@ -610,7 +629,7 @@ tr:nth-child(even){background:#fafafa}
 <h1>${title}</h1>
 <div class="sub">${subtitle}</div>
 <table>
-<thead><tr><th>#</th><th>이름</th><th>등록일</th><th>구분</th><th>납부일</th><th>결제</th><th>상태</th><th>비고</th></tr></thead>
+<thead>${thead}</thead>
 <tbody>${rows}</tbody>
 </table>
 <script>window.onload=function(){window.print();}<\/script>
