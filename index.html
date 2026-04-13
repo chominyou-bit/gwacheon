@@ -332,6 +332,7 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
           <th>화 <input type="color" id="color-tue" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('tue',this.value)"></th>
           <th>수 <input type="color" id="color-wed" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('wed',this.value)"></th>
           <th>목 <input type="color" id="color-thu" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:4px" onchange="schedColorChange('thu',this.value)"></th>
+          <th style="width:80px;text-align:center;font-size:11px">빈칸색 <input type="color" id="color-empty" style="width:22px;height:22px;border:none;cursor:pointer;vertical-align:middle;border-radius:4px;margin-left:2px" onchange="schedColorChange('empty',this.value)"></th>
           <th style="width:50px;text-align:center">삭제</th>
         </tr></thead>
         <tbody id="sched-tbody"></tbody>
@@ -421,7 +422,7 @@ function loadSettle(){try{const s=localStorage.getItem(LS_SETTLE);if(s)return JS
 function saveSettle(){try{localStorage.setItem(LS_SETTLE,JSON.stringify(settleData));}catch(e){}}
 function loadSched(){try{const s=localStorage.getItem(LS_SCHED);if(s)return JSON.parse(s);}catch(e){}return SCHED_DEFAULTS.map(r=>({...r}));}
 function saveSched(){try{localStorage.setItem(LS_SCHED,JSON.stringify(schedData));}catch(e){}}
-function loadSchedColors(){try{const s=localStorage.getItem(LS_SCHED_COLOR);if(s)return JSON.parse(s);}catch(e){}return{tue:'#e8f0fb',wed:'#e8f5e9',thu:'#fffde7'};}
+function loadSchedColors(){try{const s=localStorage.getItem(LS_SCHED_COLOR);if(s){const p=JSON.parse(s);if(!p.empty)p.empty='#f5f5f0';return p;}}catch(e){}return{tue:'#e8f0fb',wed:'#e8f5e9',thu:'#fffde7',empty:'#f5f5f0'};}
 function saveSchedColors(){try{localStorage.setItem(LS_SCHED_COLOR,JSON.stringify(schedColors));}catch(e){}}
 
 let data,snapshots,settleData,schedData,schedColors,filterStatus='all',editingRow=null,nextId=93,seqMap={};
@@ -546,8 +547,8 @@ const SCHED_DEFAULTS=[
 ];
 
 function schedColorChange(col,val){schedColors[col]=val;saveSchedColors();renderSchedule();}
-function renderSchedule(){['tue','wed','thu'].forEach(c=>{const e=document.getElementById('color-'+c);if(e)e.value=schedColors[c];});document.getElementById('sched-tbody').innerHTML=schedData.map((row,i)=>`<tr><td style="background:#f5f5f0;font-size:12px;color:#888;white-space:nowrap"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'time',this)">${row.time}</div></td><td style="background:${schedColors.tue}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'tue',this)">${row.tue}</div></td><td style="background:${schedColors.wed}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'wed',this)">${row.wed}</div></td><td style="background:${schedColors.thu}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'thu',this)">${row.thu}</div></td><td style="text-align:center"><button class="ab del" style="width:auto;padding:3px 8px;display:inline-block" onclick="deleteSchedRow(${i})">✕</button></td></tr>`).join('');}
-function schedSave(i,col,el){schedData[i][col]=el.innerText.trim();saveSched();}
+function renderSchedule(){['tue','wed','thu','empty'].forEach(c=>{const e=document.getElementById('color-'+c);if(e)e.value=schedColors[c]||'#f5f5f0';});document.getElementById('sched-tbody').innerHTML=schedData.map((row,i)=>{const cellBg=(col)=>row[col]?schedColors[col]:(schedColors.empty||'#f5f5f0');return`<tr><td style="background:#f5f5f0;font-size:12px;color:#888;white-space:nowrap"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'time',this)">${row.time}</div></td><td style="background:${cellBg('tue')}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'tue',this)">${row.tue}</div></td><td style="background:${cellBg('wed')}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'wed',this)">${row.wed}</div></td><td style="background:${cellBg('thu')}"><div class="sched-cell" contenteditable="true" onblur="schedSave(${i},'thu',this)">${row.thu}</div></td><td style="text-align:center"><button class="ab del" style="width:auto;padding:3px 8px;display:inline-block" onclick="deleteSchedRow(${i})">✕</button></td></tr>`;}).join('');}
+function schedSave(i,col,el){schedData[i][col]=el.innerText.trim();saveSched();renderSchedule();}
 function addScheduleRow(){schedData.push({time:'',tue:'',wed:'',thu:''});saveSched();renderSchedule();const rows=document.getElementById('sched-tbody').rows;if(rows.length)rows[rows.length-1].scrollIntoView({behavior:'smooth',block:'center'});}
 function deleteSchedRow(i){if(!confirm('이 행을 삭제할까요?'))return;schedData.splice(i,1);saveSched();renderSchedule();}
 
