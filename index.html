@@ -191,7 +191,14 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
     <div class="saved-hint" id="saved-hint" style="margin-bottom:0;flex:1">자동 저장됨</div>
     <button onclick="exportData()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📤 내보내기</button>
     <label style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">📥 가져오기<input type="file" accept=".json,application/json,text/plain,*/*" style="display:none" onchange="importData(this)"></label>
-    <button onclick="printList()" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">🖨️ 인쇄/PDF</button>
+    <div style="position:relative;display:inline-block" id="print-wrap">
+      <button onclick="togglePrintMenu(event)" style="font-size:12px;padding:5px 12px;border-radius:16px;border:0.5px solid #ccc;background:#fff;color:#555;cursor:pointer;font-family:inherit;white-space:nowrap">🖨️ 인쇄/PDF ▾</button>
+      <div id="print-menu" style="display:none;position:absolute;right:0;top:calc(100% + 4px);background:#fff;border:0.5px solid #ccc;border-radius:10px;box-shadow:0 4px 12px rgba(0,0,0,.12);z-index:100;min-width:130px;overflow:hidden">
+        <div onclick="printList('all')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#333" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">📋 전체 명단</div>
+        <div onclick="printList('odd')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#185fa5;border-top:0.5px solid #f0f0e8" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">🔵 홀수 납부</div>
+        <div onclick="printList('even')" style="font-size:12px;padding:9px 16px;cursor:pointer;color:#3b6d11;border-top:0.5px solid #f0f0e8" onmouseover="this.style.background='#f5f5f0'" onmouseout="this.style.background=''">🟢 짝수 납부</div>
+      </div>
+    </div>
   </div>
   <div class="stat-row" id="stats"></div>
 
@@ -230,7 +237,10 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
   <div id="tab-odd" class="tab-pane">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
       <p style="font-size:13px;color:#888">홀수 날짜 납부 · 결제일 오름차순</p>
-      <button class="reset-btn" onclick="resetPay('odd')">이번 달 체크 초기화</button>
+      <div style="display:flex;gap:8px">
+        <button class="reset-btn" onclick="printList('odd')">🖨️ 홀수 명단 인쇄</button>
+        <button class="reset-btn" onclick="resetPay('odd')">이번 달 체크 초기화</button>
+      </div>
     </div>
     <div class="pay-tbl-wrap">
       <table class="pt">
@@ -270,7 +280,10 @@ input[type=checkbox].chk{width:17px;height:17px;cursor:pointer;accent-color:#3b6
   <div id="tab-even" class="tab-pane">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:1rem">
       <p style="font-size:13px;color:#888">짝수 날짜 납부 · 결제일 오름차순</p>
-      <button class="reset-btn" onclick="resetPay('even')">이번 달 체크 초기화</button>
+      <div style="display:flex;gap:8px">
+        <button class="reset-btn" onclick="printList('even')">🖨️ 짝수 명단 인쇄</button>
+        <button class="reset-btn" onclick="resetPay('even')">이번 달 체크 초기화</button>
+      </div>
     </div>
     <div class="pay-tbl-wrap">
       <table class="pt">
@@ -538,11 +551,36 @@ function schedSave(i,col,el){schedData[i][col]=el.innerText.trim();saveSched();}
 function addScheduleRow(){schedData.push({time:'',tue:'',wed:'',thu:''});saveSched();renderSchedule();const rows=document.getElementById('sched-tbody').rows;if(rows.length)rows[rows.length-1].scrollIntoView({behavior:'smooth',block:'center'});}
 function deleteSchedRow(i){if(!confirm('이 행을 삭제할까요?'))return;schedData.splice(i,1);saveSched();renderSchedule();}
 
-function printList(){
-  const members=data.filter(d=>d.status!=='out');
-  const tl=t=>t==='odd'?'홀':t==='even'?'짝':t==='both'?'홀+짝':'-';
+function togglePrintMenu(e){
+  e.stopPropagation();
+  const m=document.getElementById('print-menu');
+  m.style.display=m.style.display==='none'?'block':'none';
+}
+document.addEventListener('click',function(){
+  const m=document.getElementById('print-menu');
+  if(m)m.style.display='none';
+});
+function printList(filter){
+  const m=document.getElementById('print-menu');
+  if(m)m.style.display='none';
+  const base=data.filter(d=>d.status!=='out');
+  let members,title,subtitle;
   const now=new Date();
   const dateStr=`${now.getFullYear()}.${String(now.getMonth()+1).padStart(2,'0')}.${String(now.getDate()).padStart(2,'0')}`;
+  if(filter==='odd'){
+    members=base.filter(d=>d.type==='odd'||d.type==='both');
+    title='과천 홀수 납부 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (홀수·홀+짝, 탈퇴 제외)`;
+  } else if(filter==='even'){
+    members=base.filter(d=>d.type==='even'||d.type==='both');
+    title='과천 짝수 납부 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (짝수·홀+짝, 탈퇴 제외)`;
+  } else {
+    members=base;
+    title='과천 회원 명단';
+    subtitle=`${dateStr} 기준 · 총 ${members.length}명 (탈퇴 제외, 홀딩 포함)`;
+  }
+  const tl=t=>t==='odd'?'홀':t==='even'?'짝':t==='both'?'홀+짝':'-';
   const rows=members.map((m,i)=>{
     const bg=m.status==='hold'?'background:#fffbe6':'';
     return `<tr style="${bg}">
@@ -557,7 +595,7 @@ function printList(){
     </tr>`;
   }).join('');
   const html=`<!DOCTYPE html><html lang="ko"><head><meta charset="UTF-8">
-<title>과천 회원 명단 ${dateStr}</title>
+<title>${title} ${dateStr}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,'Apple SD Gothic Neo','Malgun Gothic',sans-serif;font-size:12px;padding:20px;color:#111}
@@ -569,8 +607,8 @@ td{padding:5px 8px;border:0.5px solid #ddd;vertical-align:middle}
 tr:nth-child(even){background:#fafafa}
 @media print{@page{size:A4;margin:15mm}button{display:none}}
 </style></head><body>
-<h1>과천 회원 명단</h1>
-<div class="sub">${dateStr} 기준 · 총 ${members.length}명 (탈퇴 제외, 홀딩 포함)</div>
+<h1>${title}</h1>
+<div class="sub">${subtitle}</div>
 <table>
 <thead><tr><th>#</th><th>이름</th><th>등록일</th><th>구분</th><th>납부일</th><th>결제</th><th>상태</th><th>비고</th></tr></thead>
 <tbody>${rows}</tbody>
